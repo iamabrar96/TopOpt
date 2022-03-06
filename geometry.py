@@ -1,9 +1,12 @@
+from parameters import Parameters
+
+
 class Rectangle_beam:
    
 
-    def __init__(self,point1,point2):
-        self.point1=point1
-        self.point2=point2
+    def __init__(self, params: Parameters):
+        self.point1=[0,0,0]
+        self.point2= [params.nelx, params.nely, params.nelz]
         gmsh.initialize()
         gmsh.model.add("rectangular beam")
         gmsh.option.setNumber("Mesh.RecombineAll",1)
