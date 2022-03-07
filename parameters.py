@@ -10,7 +10,7 @@ class Parameters:
     ''' degrees of freedom per element '''
     dof_per_ele= node_per_ele*dof_per_node
     ''' number of dimension of the problem'''
-    nd_per_element=3
+    n_dim=3
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
@@ -30,7 +30,7 @@ class Parameters:
     '''  youngs modulus of void material '''                          
     Emin=1e-9                         
     '''Total number of elements'''
-    no_of_ele=nelx*nely*nelz  
+    num_elems=nelx*nely*nelz  
     ''' Total number of nodes'''   
     tnodes=(nelx+1)*(nely+1)*(nelz+1)
     ''' Total number of degrees of freedom'''
@@ -39,6 +39,10 @@ class Parameters:
     max_loop=200
     ''' termination criteria'''
     tol =0.01
+    '''Force magnitude'''
+    force = -1
+    '''Integration type'''
+    integration_type="CompositeGauss4"
 
 p= Parameters()
 print(p.node_per_ele)
