@@ -40,6 +40,6 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = -1
+    force = -100
     '''Integration type'''
     integration_type="CompositeGauss4"

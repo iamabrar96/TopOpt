@@ -5,16 +5,13 @@ from parameters import Parameters
 from geometry import Rectangle_beam
 
 class FE_solver:
-    def __init__(self, geometry: Rectangle_beam, params:Parameters) -> None:
-        self.geometry= geometry
+    def __init__(self, params:Parameters) -> None:
         self.params= params
         self.helper= gmsh_helper(params)
 
 
 
         ################################# Initialisations ################################
-
-        self.geometry.geom_automatic()
         self.integration_points, self.weights= self.helper.gauss_points(self.params.integration_type)
 
         #For now no need for shape functions so omitted here
@@ -23,11 +20,11 @@ class FE_solver:
         self.determinants= self.helper.Jacob(self.integration_points)
         self.determinants= self.determinants.reshape(-1, len(self.weights))
 
-        self.init_density()
-        self.nodetags, self.centroids= self.helper.element_nodes()
+        self.nodetags, self.element_dofs, self.centroids= self.helper.element_nodes()
 
-    
-    
+        self.init_densities()
+        self.prepare_system_of_equations()
+
     def Bmat(self):
         '''
         input : shape function derivatives with respect to x, y ,z axis
@@ -75,30 +72,12 @@ class FE_solver:
         C[2,1]=C[0,1] 
         self.C= 1/((1+self.params.nu)*(1-2*self.params.nu))*C
     
-
-    
-    def element_stiffness_matrix(self):
-        '''
-        obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
-        '''
-        
-        self.ke = []
-        for j in range(self.params.num_elems):
-            k=[]
-            for i in range(len(self.B_mat)):
-                k.append(self.determinants[j][i]*self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
-            k= np.sum(k,axis = 0) 
-            self.ke.append(k)
-            
-        self.ke = np.array(self.ke)
-    
-    def init_density(self):
+    def init_densities(self):
         '''
         initialisation of design and physical variables (densities)
         '''
 
-        self.des_dens=np.ones((self.params.num_elems,1))*self.params.volfrac
-        self.pyh_dens=self.des_dens                  # physical densities are assigned a constant and unifrom values(initially)
+        self.phy_dens= np.ones(self.params.num_elems)*self.params.volfrac   # physical densities are assigned a constant and unifrom values(initially)
 
     def simp_formula(self):
         '''
@@ -106,29 +85,35 @@ class FE_solver:
         '''
 
         E0, Emin, p= self.params.E0, self.params.Emin, self.params.p
-        nelx, nely, nelz= self.params.nelx, self.params.nely, self.params.nelz
         
-        msimp=Emin+(np.transpose(self.pyh_dens.flatten())**p)*(E0-Emin)
+        msimp=Emin+(np.transpose(self.phy_dens.flatten())**p)*(E0-Emin)
 
         return msimp
-    
+
+    def element_stiffness_matrix(self):
+        '''
+        obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
+        '''
+        self.ke = []
+        for j in range(self.params.num_elems):
+            k=[]
+            for i in range(len(self.B_mat)):
+                k.append(self.determinants[j][i]*self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
+            k= np.sum(k,axis = 0)
+            self.ke.append(k)
+            
+        self.ke = np.array(self.ke)
+
     def globalstiffness_matrix(self):
         '''
         forming of global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
         '''
+        msimp= self.simp_formula()
 
         self.kg=np.zeros((self.params.tdof,self.params.tdof))
-        msimp= self.simp_formula()
-        self.my_nodes= np.load("my_nodes.npy")
-
         for i in range(self.params.num_elems):
-            nodes=np.vstack((self.nodetags[i]*3, self.nodetags[i]*3+1, self.nodetags[i]*3+2)).flatten('F')
-            x,y=np.meshgrid(nodes, nodes)
-            self.kg[y,x]+= msimp[i]*self.ke[i]
-        
-        kg2= np.load("kg.npy")
-        # print(((self.kg-kg2)>1e-3))
-        indices= np.where(np.abs(self.kg-kg2)> 1e-3)
+            x,y=np.meshgrid(self.element_dofs[i], self.element_dofs[i])
+            self.kg[y,x]+= self.ke[i] * msimp[i]
         
     
     def nodal_forces(self):
@@ -149,22 +134,39 @@ class FE_solver:
         x,y=np.meshgrid(freedof,freedof)
         self.U=np.zeros(self.params.tdof)
         self.U[freedof]=np.linalg.solve(self.kg[y,x],self.F[freedof])
-        
-
-        
     
-    def solve(self):
-        '''Call all the individual functions for an automatic solve'''
+    def elemental_compliance(self):
+        self.Jelem= []
+        for i in range(self.params.num_elems):
+            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
+        self.Jelem= np.array(self.Jelem)        
+    
+    def prepare_system_of_equations(self):
         self.Bmat()
         self.constitutive_matrix()
         self.element_stiffness_matrix()
-        self.globalstiffness_matrix()
         self.nodal_forces()
+
+    def solve(self, new_density):
+        '''
+        solve for nodal displacements and element compliance for given elemental densities 
+        returns 
+            nodal_displacements 
+            element compliances
+        '''
+
+        self.phy_dens= new_density
+        self.globalstiffness_matrix()
         self.nodal_displacements()
+        self.elemental_compliance()
+
+        return self.U, self.Jelem
 
 
-params= Parameters()
-geometry= Rectangle_beam(params)
-solver= FE_solver(geometry, params)
-solver.solve()
+if __name__ == '__main__':
+    params= Parameters()
+    geometry= Rectangle_beam(params)
+    geometry.geom_automatic()
+    solver= FE_solver(params)
+    solver.solve()
 

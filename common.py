@@ -1,4 +1,5 @@
 import gmsh
+from matplotlib.pyplot import axis
 import numpy as np
 
 from parameters import Parameters
@@ -10,7 +11,7 @@ class gmsh_helper():
         p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
         fixeddof= (p[0]-1)*self.params.n_dim                                            # node numbers of fixddof
         # node coordinates of fixeddof 
-        fixeddofc=np.vstack([fixeddof,fixeddof+1,fixeddof+2])          # node coordinates of fixeddof 
+        fixeddofc=np.vstack([fixeddof+i for i in range(self.params.n_dim)])          # node coordinates of fixeddof 
         return fixeddofc
 
     def free_dof(self, fixeddof):
@@ -32,20 +33,22 @@ class gmsh_helper():
 
     def element_nodes(self):
         '''
-        this function gives the nodes and coordinates of each hexahydron element
+        this function gives the nodes, dofs and coordinates of each hexahydron element
         '''
 
-        nodetags, coord, _ =gmsh.model.mesh.getNodesByElementType(elementType= self.element_type,tag = -1, returnParametricCoord = True)
+        nodetags, coord, _ =gmsh.model.mesh.getNodesByElementType(elementType= self.element_type,tag = -1, returnParametricCoord = False)
+        nodetags= nodetags.reshape(self.params.num_elems, -1).astype('int') -1 # since in python indices start with zero
         
-        nodetags= nodetags.reshape(self.params.num_elems, -1) -1 # since in python indices start with zero
-        coord= coord.reshape(self.params.num_elems, -1)
+        offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)  #[0,1,2, 0,1,2, 0,1,...]
+        element_dofs= np.repeat(self.params.n_dim * nodetags, self.params.n_dim, axis=1) + offset  #[3*nodetag, 3*nodetag+1, 3*nodetag+2 ...]
 
+        coord= coord.reshape(self.params.num_elems, -1)
         centroids=[]
         for j in range(self.params.num_elems):
             centroids.append((np.sum(coord[j].reshape(-1,3),axis=0)/self.params.node_per_ele))
         centroids=np.vstack(centroids)
 
-        return nodetags, centroids
+        return nodetags, element_dofs, centroids
     
     def gauss_points(self, integration_type="CompositeGauss4"):
         '''
