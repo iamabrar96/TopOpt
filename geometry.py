@@ -1,3 +1,5 @@
+import gmsh
+import numpy as np
 from parameters import Parameters
 
 
@@ -5,6 +7,7 @@ class Rectangle_beam:
    
 
     def __init__(self, params: Parameters):
+        self.params= params
         self.point1=[0,0,0]
         self.point2= [params.nelx, params.nely, params.nelz]
         gmsh.initialize()
@@ -17,11 +20,11 @@ class Rectangle_beam:
         self.box =   gmsh.model.occ.addBox(*self.point1,*self.point2)
         gmsh.model.occ.synchronize()
         for i in [9,10,11,12] :
-            gmsh.model.mesh.setTransfiniteCurve(i,nelx+1)
+            gmsh.model.mesh.setTransfiniteCurve(i,self.params.nelx+1)
         for i in [1,3,5,7] : 
-            gmsh.model.mesh.setTransfiniteCurve(i,nelz+1)
+            gmsh.model.mesh.setTransfiniteCurve(i,self.params.nelz+1)
         for i in [2,4,6,8]:
-            gmsh.model.mesh.setTransfiniteCurve(i,nely+1)
+            gmsh.model.mesh.setTransfiniteCurve(i,self.params.nely+1)
         for i in range(1,7):
             gmsh.model.mesh.setTransfiniteSurface(i)
 
@@ -53,7 +56,7 @@ class Rectangle_beam:
     similarly it also returns the tag number which in this case is 3
     '''
     def add_fixedbc(self):
-        self.fixed_bc= gmsh.model.addPhysicalGroup(1,[4,3,1,2],3)
+        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
         #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
 
     def visualize(self):
@@ -62,8 +65,28 @@ class Rectangle_beam:
     def finalize(self):
         gmsh.finalize()
 
+params= Parameters()
+rec_geo=Rectangle_beam(params)
+rec_geo.create_geometry()
+rec_geo.create_mesh()
+rec_geo.visualize()
+rec_geo.finalize()
 
-
-class PointBottom(Rectangle_beam):
+'''
+different types of boundary conditions
+'''
+class Michell_beam(Rectangle_beam):
     def add_forcebc(self):
-        pass 
+        self.force_bc=gmsh.model.addPhysicalGroup(0,[14,26,17],2)
+    def add_fixedbc(self):
+         self.fixed_bc= gmsh.model.addPhysicalGroup(1,[1,5],3)
+class Distributed_load_beam(Rectangle_beam):
+    def add_forcebc(self):
+        self.force_bc=gmsh.model.addPhysicalGroup(1,[1,5],2)
+    def add_fixedbc(self):
+        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[4],3)
+class mid_cantilever(Rectangle_beam):
+    def add_forcebc(self):
+        self.force_bc=gmsh.model.addPhysicalGroup(0,[11,12],2)
+    def add_fixedbc(self):
+        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)

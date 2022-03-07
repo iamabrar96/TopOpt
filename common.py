@@ -65,3 +65,6 @@ class gmsh_helper():
     def Jacob(self, integration_points):
         _, determinants, _=gmsh.model.mesh.getJacobians(elementType=self.element_type,localCoord= integration_points,tag = -1, task = 0, numTasks = 1)
         return determinants
+    
+    def get_entities_for_physical_group(self):
+        physical_group=gmsh.model.getPhysicalGroups()
