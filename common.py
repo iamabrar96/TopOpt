@@ -1,18 +1,20 @@
-
+import gmsh
+import numpy as np
+from parameters import Parameters
 
 class gmsh_helper():
-    def __init__(self) -> None:
-        pass 
+    def __init__(self,params:Parameters):
+        self.params=params
     
     def getNodesForPhysicalGroup(self,dimTag=(1,2)):
         self.p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
-        self.forcedofy=((self.p[0]-1 )*nd_per_element)                                          # node numbers of forcedof
+        self.forcedofy=((self.p[0]-1 )*self.params.nd_per_element)                                          # node numbers of forcedof
         self.forcedofyc= self.forcedofy+1                                                       # node coordinate of forcedof
-        self.fixeddof=((self.p[0]-1)*nd_per_element)                                             # node numbers of fixddof
+        self.fixeddof=((self.p[0]-1)*self.params.nd_per_element)                                             # node numbers of fixddof
         self.fixeddofc=np.concatenate((self.fixeddof,self.fixeddof+1,self.fixeddof+2))           # node coordinates of fixeddof 
 
     def free_dof(self):
-        self.setdiff=np.arange(0,tdof)
+        self.setdiff=np.arange(0,self.params.tdof)
         self.freedof=[]                                                                # it contains all the dofs except the fixeddof
         for i in self.setdiff:
             if i not in self.fixeddofc:
@@ -28,14 +30,14 @@ class gmsh_helper():
     '''
     def element_nodes(self):
         self.nodetags, self.coord, self.parametricCoord=gmsh.model.mesh.getNodesByElementType(elementType=self.my_element,tag = -1, returnParametricCoord = True)
-        self.my_nodes=np.split(self.nodetags,no_of_ele)
-        self.my_coord=np.split(self.coord,no_of_ele)
+        self.my_nodes=np.split(self.nodetags,self.params.no_of_ele)
+        self.my_coord=np.split(self.coord,self.params.no_of_ele)
         self.my_coord_edof=[]      # degrees of freedom of each element along x,y,z direction
         
         # self.my_coord=np.split(self.coord,no_of_ele)
         # self.my_coord_edof=[]      # degrees of freedom of each element along x,y,z direction 
         
-        for i in range(no_of_ele):
+        for i in range(self.params.no_of_ele):
 
             self.my_coord_edof.append(np.vstack((self.my_nodes[i]*3-3,self.my_nodes[i]*3-2,self.my_nodes[i]*3-1)).flatten('F'))
         self.my_coord_edof=np.vstack(self.my_coord_edof)
@@ -45,8 +47,8 @@ class gmsh_helper():
         for i in (self.my_coord1):
             self.coord2.append(i.reshape(-1,3))
         self.center_point=[]
-        for j in range(no_of_ele):
-            self.center_point.append((np.sum(self.coord2[j],axis=0)/node_per_ele))
+        for j in range(self.params.no_of_ele):
+            self.center_point.append((np.sum(self.coord2[j],axis=0)/self.params.node_per_ele))
         self.centroid=np.vstack(self.center_point)
     '''
     this function takes the output of elementtype function as input  and fourth order gauss quadrature rule is applied
@@ -69,3 +71,5 @@ class gmsh_helper():
         self.jacobians, self.determinants, self.coord=gmsh.model.mesh.getJacobians(elementType=self.my_element,localCoord=self.Integration_points,tag = -1, task = 0, numTasks = 1)
         self.determinants=np.array(self.determinants)
         self.determinants=self.determinants.reshape(-1,self.total_quad_pt)
+    def get_entities_for_physical_group(self):
+        physical_group=gmsh.model.getPhysicalGroups()
