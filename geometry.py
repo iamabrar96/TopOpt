@@ -13,10 +13,12 @@ class Rectangle_beam:
         gmsh.initialize()
         gmsh.model.add("rectangular beam")
         gmsh.option.setNumber("Mesh.RecombineAll",1)
-    '''
-    This function takes dimensions(x,y,z) and the number of divisions on each axis as input 
-    '''
+    
     def create_geometry(self):
+        '''
+        This function takes dimensions(x,y,z) and the number of divisions on each axis as input 
+        '''
+
         self.box =   gmsh.model.occ.addBox(*self.point1,*self.point2)
         gmsh.model.occ.synchronize()
         for i in [9,10,11,12] :
@@ -35,42 +37,50 @@ class Rectangle_beam:
         gmsh.model.occ.synchronize()
         gmsh.model.mesh.recombine() 
 
-    '''
-    This function gives the nodes and coordinates of the entire geometry
-    '''
+    
     def get_node_coord(self, dimTag=(-1,-1)): 
+        '''
+        This function gives the nodes and coordinates of the entire geometry
+        '''
+
         return gmsh.model.mesh.getNodes(*dimTag, includeBoundary=True,returnParametricCoord=True)
     
     
-    '''
-    It defines the point load  in y direction on specified nodal positions.
-    It returns the tag number which in  this case  is 2
-    '''
+    
 
     def add_forcebc(self):
+        '''
+        It defines the point load  in y direction on specified nodal positions.
+        It returns the tag number which in  this case  is 2
+        '''
+
         self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
         #gmsh.model.setPhysicalName(1, self.force_bc, "Forced boundary condition")
 
-    '''
-    It defines the nodal points where there is no displacement .i.e. the boundary condition are fixed .
-    similarly it also returns the tag number which in this case is 3
-    '''
+    
     def add_fixedbc(self):
+        '''
+        It defines the nodal points where there is no displacement .i.e. the boundary condition are fixed .
+        similarly it also returns the tag number which in this case is 3
+        '''
+
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
         #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
 
+    def geom_automatic(self):
+        #give this sucker a good name
+
+        self.create_geometry()
+        self.create_mesh()
+        self.add_forcebc()
+        self.add_fixedbc()
+        
     def visualize(self):
         gmsh.fltk.run()
     
     def finalize(self):
         gmsh.finalize()
 
-params= Parameters()
-rec_geo=Rectangle_beam(params)
-rec_geo.create_geometry()
-rec_geo.create_mesh()
-rec_geo.visualize()
-rec_geo.finalize()
 
 '''
 different types of boundary conditions

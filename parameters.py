@@ -43,7 +43,3 @@ class Parameters:
     force = -1
     '''Integration type'''
     integration_type="CompositeGauss4"
-
-p= Parameters()
-print(p.node_per_ele)
-print(p.dof_per_node)

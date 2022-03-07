@@ -1,26 +1,25 @@
 
 import numpy as np
 from common import gmsh_helper
-from new import Rectangle_beam
 from parameters import Parameters
-
+from geometry import Rectangle_beam
 
 class FE_solver:
     def __init__(self, geometry: Rectangle_beam, params:Parameters) -> None:
         self.geometry= geometry
         self.params= params
-        self.helper= gmsh_helper()
+        self.helper= gmsh_helper(params)
 
 
 
         ################################# Initialisations ################################
 
+        self.geometry.geom_automatic()
         self.integration_points, self.weights= self.helper.gauss_points(self.params.integration_type)
 
         #For now no need for shape functions so omitted here
         _, self.shapefunc_dertv= self.helper.basis_function(self.integration_points)
         self.shapefunc_dertv= self.shapefunc_dertv.reshape(len(self.weights), -1)
-
         self.determinants= self.helper.Jacob(self.integration_points)
         self.determinants= self.determinants.reshape(-1, len(self.weights))
 
@@ -82,16 +81,16 @@ class FE_solver:
         '''
         obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
         '''
-
+        
         self.ke = []
         for j in range(self.params.num_elems):
             k=[]
             for i in range(len(self.B_mat)):
-                k.append(self.determinants[j][i]*self.weights[i]*(np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i]))))
+                k.append(self.determinants[j][i]*self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
             k= np.sum(k,axis = 0) 
             self.ke.append(k)
+            
         self.ke = np.array(self.ke)
-
     
     def init_density(self):
         '''
@@ -120,11 +119,17 @@ class FE_solver:
 
         self.kg=np.zeros((self.params.tdof,self.params.tdof))
         msimp= self.simp_formula()
-        
+        self.my_nodes= np.load("my_nodes.npy")
+
         for i in range(self.params.num_elems):
             nodes=np.vstack((self.nodetags[i]*3, self.nodetags[i]*3+1, self.nodetags[i]*3+2)).flatten('F')
             x,y=np.meshgrid(nodes, nodes)
             self.kg[y,x]+= msimp[i]*self.ke[i]
+        
+        kg2= np.load("kg.npy")
+        # print(((self.kg-kg2)>1e-3))
+        indices= np.where(np.abs(self.kg-kg2)> 1e-3)
+        
     
     def nodal_forces(self):
         '''
@@ -138,12 +143,15 @@ class FE_solver:
         
     def nodal_displacements(self):
         fixeddofc= self.helper.getNodesForPhysicalGroup(dimTag=(2,3))
-        freedof= self.helper.free_dof() 
+        freedof= self.helper.free_dof(fixeddofc) 
         
         #solving for nodal displacements at free dofs
         x,y=np.meshgrid(freedof,freedof)
-        self.U=np.zeros((self.params.tdof,1))
+        self.U=np.zeros(self.params.tdof)
         self.U[freedof]=np.linalg.solve(self.kg[y,x],self.F[freedof])
+        
+
+        
     
     def solve(self):
         '''Call all the individual functions for an automatic solve'''
@@ -156,8 +164,7 @@ class FE_solver:
 
 
 params= Parameters()
-geometry= Rectangle_beam()
+geometry= Rectangle_beam(params)
 solver= FE_solver(geometry, params)
 solver.solve()
-print(solver.U)
 

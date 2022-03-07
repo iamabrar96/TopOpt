@@ -21,7 +21,7 @@ class gmsh_helper():
         return freedof
 
     @property
-    def elementtype(self):
+    def element_type(self):
         #Todo get element type based on the geometry not hardcoded
         my_element= 5 #gmsh.model.mesh.getElementType(familyName="Hexahedron", order=1, serendip = False)
         return my_element
