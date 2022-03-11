@@ -14,9 +14,9 @@ class Parameters:
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
-    nelx=4
+    nelx=10
     ''' number of element in y direction'''
-    nely=1
+    nely=5
     ''' number of element in z direction '''
     nelz=2
     ''' volume fraction limit '''
@@ -40,6 +40,10 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = -100
+    force = -1
     '''Integration type'''
     integration_type="CompositeGauss4"
+
+    geometry_type= "Rectangle_beam"
+
+    density_cutoff= 0.5

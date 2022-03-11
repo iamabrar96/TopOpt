@@ -1,13 +1,13 @@
 
 import numpy as np
-from common import gmsh_helper
+from common import GMSH_helper
 from parameters import Parameters
 from geometry import Rectangle_beam
 
 class FE_solver:
     def __init__(self, params:Parameters) -> None:
         self.params= params
-        self.helper= gmsh_helper(params)
+        self.helper= GMSH_helper(params)
 
 
 
@@ -168,5 +168,6 @@ if __name__ == '__main__':
     geometry= Rectangle_beam(params)
     geometry.geom_automatic()
     solver= FE_solver(params)
-    solver.solve()
+    density= solver.phy_dens
+    solver.solve(density)
 

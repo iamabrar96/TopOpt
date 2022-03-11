@@ -3,7 +3,7 @@ from matplotlib.pyplot import axis
 import numpy as np
 
 from parameters import Parameters
-class gmsh_helper():
+class GMSH_helper():
     def __init__(self, params: Parameters) -> None:
         self.params= params
 
@@ -71,3 +71,32 @@ class gmsh_helper():
     
     def get_entities_for_physical_group(self):
         physical_group=gmsh.model.getPhysicalGroups()
+    
+    
+    
+    def finalize(self):
+        gmsh.finalize()
+    
+
+class Topology_viz:
+    def __init__(self, params: Parameters):
+        self.params= params
+        self.step = 0
+        self.t = gmsh.view.add("Topology Visualization")
+
+    def add_view(self, temp):
+        densities= temp.copy()
+        densities[densities<self.params.density_cutoff] = 0.0
+        self.step+=1
+        ele_type, ele_tag, _= gmsh.model.mesh.getElements(dim=3)
+       
+        gmsh.view.addModelData(
+                self.t,
+                self.step,
+                self.params.geometry_type,
+                "ElementData",
+                ele_tag[0],  # tags of all 3d elements
+                densities[:, None])  # data, per element should be of shape (n, 1)
+    
+    def visualize(self):
+        gmsh.fltk.run()

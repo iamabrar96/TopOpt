@@ -4,14 +4,26 @@ from parameters import Parameters
 
 
 class Rectangle_beam:
-   
+    def __new__(cls, params:Parameters):
+        if params.geometry_type == "Rectangle_beam":
+            geom = super(Rectangle_beam, Rectangle_beam).__new__(Rectangle_beam)
+        elif params.geometry_type == "Michell_beam":
+            geom = super(Rectangle_beam, Michell_beam).__new__(Michell_beam)
+        elif params.geometry_type == "Distributed_load_beam":
+            geom = super(Rectangle_beam, Distributed_load_beam).__new__(Distributed_load_beam)
+        elif params.geometry_type == "Mid_cantilever":
+            geom = super(Rectangle_beam, Mid_cantilever).__new__(Mid_cantilever)
+        else:
+            raise Exception("Invalid geometry type selected")
+
+        return geom
 
     def __init__(self, params: Parameters):
         self.params= params
         self.point1=[0,0,0]
         self.point2= [params.nelx, params.nely, params.nelz]
         gmsh.initialize()
-        gmsh.model.add("rectangular beam")
+        gmsh.model.add("Rectangle_beam") #important to use the same name as the geometry type
         gmsh.option.setNumber("Mesh.RecombineAll",1)
     
     def create_geometry(self):
@@ -75,11 +87,6 @@ class Rectangle_beam:
         self.add_forcebc()
         self.add_fixedbc()
         
-    def visualize(self):
-        gmsh.fltk.run()
-    
-    def finalize(self):
-        gmsh.finalize()
 
 
 '''
@@ -95,8 +102,15 @@ class Distributed_load_beam(Rectangle_beam):
         self.force_bc=gmsh.model.addPhysicalGroup(1,[1,5],2)
     def add_fixedbc(self):
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[4],3)
-class mid_cantilever(Rectangle_beam):
+class Mid_cantilever(Rectangle_beam):
     def add_forcebc(self):
         self.force_bc=gmsh.model.addPhysicalGroup(0,[11,12],2)
     def add_fixedbc(self):
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
+
+
+if __name__ == '__main__':
+    params= Parameters()
+    params.geometry_type = "Mid_cantilever"
+    geom= Rectangle_beam(params)
+    assert(isinstance(geom, Mid_cantilever))
