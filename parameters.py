@@ -14,9 +14,9 @@ class Parameters:
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
-    nelx=10
+    nelx=30
     ''' number of element in y direction'''
-    nely=5
+    nely=10
     ''' number of element in z direction '''
     nelz=2
     ''' volume fraction limit '''
@@ -46,4 +46,4 @@ class Parameters:
 
     geometry_type= "Rectangle_beam"
 
-    density_cutoff= 0.5
+    density_cutoff= 0.1

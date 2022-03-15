@@ -251,39 +251,7 @@ class Rectangle_beam:
             x,y=np.meshgrid(self.Nodes,self.Nodes)
             self.kg[y,x]+= self.msimp[:,i]*self.ke[i]
     
-    '''
-    preparing the filter function
-    '''
-    def density_filter(self):
-        self.ih=[1]*no_of_ele*(2*(int(np.ceil(rmin)-1))+1)**2
-        self.jh=[1]*no_of_ele*(2*(int(np.ceil(rmin)-1))+1)**2
-        self.sh=[0]*len(self.ih)
-        self.cn=0                  # counter 
-        for k1 in range(1,nelz+1):
-            for i1 in range(1,nelx+1):
-                for j1 in range(1,nely+1):
-                    self.e1=(k1-1)*nelx*nely + (i1-1)*nely + (j1 -1)
-                    for k2 in range  (np.maximum(k1-math.floor(rmin),1),np.minimum(k1+math.floor(rmin),nelz)+1):
-                        for i2 in range(np.maximum(i1-math.floor(rmin),1),np.minimum(i1+math.floor(rmin),nelx)+1):
-                            for j2 in range(np.maximum(j1-math.floor(rmin),1),np.minimum(j1+math.floor(rmin),nely)+1):
-                               self.e2=((k2-1)*nelx*nely) +(i2-1)*nely+ (j2 -1)
-                               if self.cn<no_of_ele*(2*(int(np.ceil(rmin)-1))+1)**2:  
-                                    self.ih[self.cn]=self.e1                        # row indexing
-                                    self.jh[self.cn]=self.e2                        # column indexing
-                                    self.sh[self.cn]=np.maximum(0,rmin-math.sqrt((i1-i2)**2 + (j1-j2)**2 +(k1-k2)**2))
-                               else:
-                            
-                                    self.ih.append(self.e1)
-                                    self.jh.append(self.e2)
-                                    self.sh.append(np.maximum(0,rmin-math.sqrt((i1-i2)**2 + (j1-j2)**2 +(k1-k2)**2)))
-
-                               self.cn=self.cn+1
-
-        self.row=np.array(self.ih)
-        self.column=np.array(self.jh)
-        self.val=np.array(self.sh)                       
-        self.H=coo_matrix((self.val,(self.row,self.column)),shape=(nelx*nely*nelz,nelx*nely*nelz)).tocsc()
-        self.HS=np.sum(self.H,axis=1)
+    
     '''
     initialisation of design and physical variables (densities)
     '''

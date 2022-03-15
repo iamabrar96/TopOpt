@@ -23,7 +23,7 @@ class Rectangle_beam:
         self.point1=[0,0,0]
         self.point2= [params.nelx, params.nely, params.nelz]
         gmsh.initialize()
-        gmsh.model.add("Rectangle_beam") #important to use the same name as the geometry type
+        gmsh.model.add(type(self).__name__) #important to use the same name as the geometry type
         gmsh.option.setNumber("Mesh.RecombineAll",1)
     
     def create_geometry(self):

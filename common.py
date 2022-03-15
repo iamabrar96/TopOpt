@@ -88,14 +88,14 @@ class Topology_viz:
         densities= temp.copy()
         densities[densities<self.params.density_cutoff] = 0.0
         self.step+=1
-        ele_type, ele_tag, _= gmsh.model.mesh.getElements(dim=3)
-       
+        ele_tag, _= gmsh.model.mesh.getElementsByType(5)
+
         gmsh.view.addModelData(
                 self.t,
                 self.step,
                 self.params.geometry_type,
                 "ElementData",
-                ele_tag[0],  # tags of all 3d elements
+                ele_tag,  # tags of all 3d elements
                 densities[:, None])  # data, per element should be of shape (n, 1)
     
     def visualize(self):
