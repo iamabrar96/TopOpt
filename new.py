@@ -104,7 +104,7 @@ class Rectangle_beam:
     similarly it also returns the tag number which in this case is 3
     '''
     def add_fixedbc(self):
-        self.fixed_bc= gmsh.model.addPhysicalGroup(1,[4,3,1,2],3)
+        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
         #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
             
       
@@ -197,7 +197,7 @@ class Rectangle_beam:
                 B.append(B_i)
             self.a.append(np.hstack(B))
         self.a=np.array(self.a)  
-
+        
     '''
     it defines the threee dimensional constitutive matrix for an isotropic element
     '''
@@ -218,6 +218,12 @@ class Rectangle_beam:
         C[2,0]=C[0,1]
         C[2,1]=C[0,1] 
         self.C= 1/((1+nu)*(1-2*nu))*C
+        self.con=[]
+        for i in range(no_of_ele):
+            self.con.append(self.msimp[:,i]*C)
+        self.con=np.sum(self.con,axis=0)
+        self.con=np.array(self.con)
+      
     
     # def ref_element(self):
     #     k= np.zeros((24,24))
@@ -225,6 +231,48 @@ class Rectangle_beam:
     #         k+= weight*np.matmul(self.a[i].T, np.matmul(self.C, self.a[i]))
     #     print(k[10,9])
     #     exit()
+
+   
+
+   # THIS IS FROM MATLAB KE MATRICE
+    
+    def matonelement(self):
+        A = np.array([[32,6,-8,6,-6,4,3,-6,-10,3,-3,-3,-4,-8],[-48,0,0,-24,24,0,0,0,12,-12,0,12,12,12]])               
+        k = 1/144*np.dot(A.T,np.array([[1],[0.3]]))
+
+        K1 = np.array([[k[0][0], k[1][0] ,k[1][0] ,k[2][0] ,k[4][0] ,k[4][0]] ,[k[1][0], k[0][0] ,k[1][0] ,k[3][0] ,k[5][0] ,k[6][0]],
+        [k[1][0],k[1][0], k[0][0], k[3][0], k[6][0] ,k[5][0]],[k[2][0], k[3][0] ,k[3][0], k[0][0], k[7][0] ,k[7][0]],
+        [ k[4][0] ,k[5][0] ,k[6][0] ,k[7][0] ,k[0][0], k[1][0]],[k[4][0], k[6][0], k[5][0] ,k[7][0], k[1][0] ,k[0][0]]])
+
+        K2 = np.array([[k[8][0] , k[7][0] , k[11][0] ,k[5][0] , k[3][0]  ,k[6][0]],[k[7][0] , k[8][0] , k[11][0] ,k[4][0]  ,k[2][0]  ,k[4][0]],
+        [k[9][0], k[9][0] ,k[12][0], k[6][0]  ,k[3][0] , k[5][0]],[ k[5][0] , k[4][0]  ,k[10][0], k[8][0] , k[1][0] ,
+        k[9][0]],[k[3][0] , k[2][0] , k[4][0]  ,k[1][0]  ,k[8][0] , k[11][0]],[k[10][0], k[3][0] , k[5][0]  ,k[11][0] ,k[9][0], k[12][0]]])
+                       
+        K3 =np.array([[k[5][0]  ,k[6][0], k[3][0] ,k[8][0],  k[11][0], k[7][0]],[k[6][0] ,k[5][0] , k[3][0] ,k[9][0], k[12][0], k[9][0]],
+        [k[4][0] , k[4][0] , k[2][0],  k[7][0] , k[11][0] ,k[8][0]],[k[8][0]  ,k[9][0] ,k[1][0] , k[5][0],  k[10][0], k[4][0]],
+        [k[11][0], k[12][0], k[9][0],  k[10][0] ,k[5][0] ,k[3][0]],[ k[1][0],  k[11][0], k[8][0],  k[3][0], k[4][0]  ,k[2][0]]])
+            
+         
+        K4 =np.array([[k[13][0] ,k[10][0] , k[10][0] , k[12][0] ,k[9][0] ,k[9][0]],[k[10][0]  ,k[13][0], k[10][0] ,  k[11][0],k[8][0]  ,k[7][0]],
+        [k[10][0] , k[10][0]  ,k[13][0] , k[11][0], k[7][0] ,k[8][0]],[k[12][0], k[11][0] , k[11][0] ,k[13][0],  k[6][0],  k[6][0]],
+        [k[9][0], k[8][0],k[7][0] ,  k[6][0], k[13][0], k[10][0] ],[k[9][0],k[7][0], k[8][0] ,  k[6][0] , k[10][0]  ,k[13][0]]])
+          
+        K5 = np.array([[k[0][0], k[1][0], k[7][0],  k[2][0] ,k[4][0]  , k[3][0]],[ k[1][0], k[0][0] ,k[7][0]  ,k[3][0], k[5][0], k[10][0] ],
+        [k[7][0] ,k[7][0]  ,k[0][0] , k[4][0] , k[10][0] , k[5][0]],[k[2][0],k[3][0] ,k[4][0]   ,k[0][0], k[7][0] , k[1][0]],
+        [k[4][0] , k[5][0] , k[10][0] , k[7][0], k[0][0] , k[7][0]],[k[3][0], k[10][0]  ,k[5][0], k[1][0], k[7][0]  ,k[0][0]]])
+
+        K6 =np.array([[k[13][0] , k[10][0] ,k[6][0] , k[12][0], k[9][0] ,k[11][0]],[k[10][0], k[13][0] , k[6][0], k[11][0],k[8][0] ,k[1][0]],[k[6][0] , 
+        k[6][0] , k[13][0] , k[9][0] ,k[1][0] ,k[8][0]],[k[12][0] ,k[11][0], k[9][0],k[13][0], k[6][0],  k[10][0]],[k[9][0], k[8][0] , k[1][0]  ,k[6][0]  ,k[13][0],
+        k[6][0]],[ k[11][0], k[1][0], k[8][0], k[10][0], k[6][0] ,k[13][0] ]])
+
+        sub_a=np.c_[K1,K2,K3,K4] 
+        sub_a1=np.c_[K2.T,K5,K6,K3.T] 
+        sub_a2=np.c_[K3.T,K6,K5.T,K2.T]
+        sub_a3=np.c_[K4,K3,K2,K1.T]
+        self.KEmat = 1/((nu+1)*(1-2*nu))*np.concatenate((sub_a,sub_a1,sub_a2,sub_a3))
+        
+
+
     '''
     obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
     '''
@@ -232,13 +280,25 @@ class Rectangle_beam:
     def element_stiffness_matrix(self):
         self.ke = []
         for j in range(self.determinants.shape[0]):
-            self.k=[]
+            self.kt=[]
             for i in range (self.a.shape[0]):
-                self.k.append(self.determinants[j][i]*self.weights[i]*(np.matmul(np.transpose(self.a[i]),np.matmul(self.C, self.a[i]))))
-            self.k= np.sum(self.k,axis = 0) 
+                self.kt.append(self.determinants[j][i]*self.weights[i]*(np.matmul(np.transpose(self.a[i]),np.matmul(self.C, self.a[i]))))
+            self.kt= np.sum(self.kt,axis = 0) 
             #self.k=np.array(self.k)
-            self.ke.append(self.k)
+            self.ke.append(self.kt)
         self.ke = np.array(self.ke)
+
+
+    #  THIS IS FROM GMSH KE MATRICE WITHOUT DETERMINANATS FOR ONLY ONE ELEMENT
+    def onelement(self):
+        self.one=self.weights[0]*(np.matmul(np.transpose(self.a[0]),np.matmul(self.con, self.a[0])))
+        print(6.31371e-3==0.23504)
+        
+
+
+
+
+
 
     '''
     forming of global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
@@ -262,11 +322,11 @@ class Rectangle_beam:
         for k1 in range(1,nelz+1):
             for i1 in range(1,nelx+1):
                 for j1 in range(1,nely+1):
-                    self.e1=(k1-1)*nelx*nely + (i1-1)*nely + (j1 -1)
+                    self.e1=(k1-1)*nelx*nely + (i1-1)*nely + (j1-1)
                     for k2 in range  (np.maximum(k1-math.floor(rmin),1),np.minimum(k1+math.floor(rmin),nelz)+1):
                         for i2 in range(np.maximum(i1-math.floor(rmin),1),np.minimum(i1+math.floor(rmin),nelx)+1):
                             for j2 in range(np.maximum(j1-math.floor(rmin),1),np.minimum(j1+math.floor(rmin),nely)+1):
-                               self.e2=((k2-1)*nelx*nely) +(i2-1)*nely+ (j2 -1)
+                               self.e2=((k2-1)*nelx*nely) +(i2-1)*nely+ (j2-1)
                                if self.cn<no_of_ele*(2*(int(np.ceil(rmin)-1))+1)**2:  
                                     self.ih[self.cn]=self.e1                        # row indexing
                                     self.jh[self.cn]=self.e2                        # column indexing
@@ -322,9 +382,8 @@ class Rectangle_beam:
         loop=0
         difference=1
         #while difference>tol and loop < max_loop:
-        if difference>tol:
+        if difference>tol :
             if loop<max_loop:
-
                 # update global stiffness using x.globalstiffness()
                 # solve for nodal disp using x.nodaldisp()
                 # complicance
@@ -336,9 +395,10 @@ class Rectangle_beam:
                 for i in range(no_of_ele):
                     temp= np.dot(self.U[self.my_coord_edof[i]].T,np.dot(self.ke[i],self.U[self.my_coord_edof[i]]))
                     comp.append(temp)
+                comp= np.array(comp)
                 comp= np.array(comp).reshape(no_of_ele,1)
-                #print(comp)
                 der_comp=(comp*( -p*(E0-Emin)*self.pyh_dens**(p-1) ))
+    
                 der_vol=np.ones((no_of_ele,1))
                 ''' use of filtering function to improve the sensitivity analysis  '''
                 der_comp=self.H*( der_comp/self.HS)
@@ -376,7 +436,7 @@ x.add_forcebc()
 x.getNodesForPhysicalGroup(dimTag=(1,2))
 x.nodal_forces()
 x.add_fixedbc()
-x.getNodesForPhysicalGroup(dimTag=(1,3))
+x.getNodesForPhysicalGroup(dimTag=(2,3))
 z=x.get_node_coord()
 x.free_dof()
 x.densities()
@@ -394,7 +454,10 @@ x.Bmat()
 x.constitutive_matrix()
 x.density_filter()
 # x.ref_element()
+x.matonelement()
 x.element_stiffness_matrix()
+x.onelement()
+
 x.globalstiffness_matrix()
 x.nodal_displacements()
 x.densityestimation()
@@ -405,187 +468,190 @@ x.densityestimation()
 
 #print(comp)
 # print(x.centroid)
-print(x.pyh_dens)
 
 
-class my_neural_network:
-    def __init__(self,X_train, Y_train,layer_dims ):
-        self.X_train = X_train
-        self.Y_train=Y_train   
-        self.layer_dims=layer_dims
-        parameters = self.initialize_parameters_deep()
-        print(parameters)
+
+
+
+
+# class my_neural_network:
+#     def __init__(self,X_train, Y_train,layer_dims ):
+#         self.X_train = X_train
+#         self.Y_train=Y_train   
+#         self.layer_dims=layer_dims
+#         parameters = self.initialize_parameters_deep()
+#         print(parameters)
  
-    def initialize_parameters_deep(self):
-        """
-        Arguments:
-        layer_dims -- python array (list) containing the dimensions of each layer in the network
+#     def initialize_parameters_deep(self):
+#         """
+#         Arguments:
+#         layer_dims -- python array (list) containing the dimensions of each layer in the network
         
-        Returns:
-        parameters -- python dictionary containing  parameters "W1", "b1", ..., "WL", "bL":
-                        Wl -- weight matrix of shape (layer_dims[l], layer_dims[l-1])
-                        bl -- bias vector of shape (layer_dims[l], 1)
-        """
+#         Returns:
+#         parameters -- python dictionary containing  parameters "W1", "b1", ..., "WL", "bL":
+#                         Wl -- weight matrix of shape (layer_dims[l], layer_dims[l-1])
+#                         bl -- bias vector of shape (layer_dims[l], 1)
+#         """
         
-        parameters = {}
-        L = len(self.layer_dims) # number of layers in the network
+#         parameters = {}
+#         L = len(self.layer_dims) # number of layers in the network
 
-        for l in range(1, L):
-            parameters["W" + str(l)] = np.random.uniform(-1/np.sqrt(self.layer_dims[l - 1]),1/np.sqrt(self.layer_dims[l - 1]),(self.layer_dims[l], self.layer_dims[l-1]))
-            parameters["b" + str(l)] = np.zeros((self.layer_dims[l], 1))
-            parameters["gamma" + str(l)] = np.ones((self.layer_dims[l], 1))
-            parameters["beta" + str(l)] = np.zeros((self.layer_dims[l], 1))
-            assert(parameters['W' + str(l)].shape == (self.layer_dims[l], self.layer_dims[l - 1]))
-            assert(parameters['b' + str(l)].shape == (self.layer_dims[l], 1))
-            assert(parameters['gamma' + str(l)].shape == (self.layer_dims[l], 1))
-            assert(parameters['beta' + str(l)].shape == (self.layer_dims[l], 1))
-        return parameters
+#         for l in range(1, L):
+#             parameters["W" + str(l)] = np.random.uniform(-1/np.sqrt(self.layer_dims[l - 1]),1/np.sqrt(self.layer_dims[l - 1]),(self.layer_dims[l], self.layer_dims[l-1]))
+#             parameters["b" + str(l)] = np.zeros((self.layer_dims[l], 1))
+#             parameters["gamma" + str(l)] = np.ones((self.layer_dims[l], 1))
+#             parameters["beta" + str(l)] = np.zeros((self.layer_dims[l], 1))
+#             assert(parameters['W' + str(l)].shape == (self.layer_dims[l], self.layer_dims[l - 1]))
+#             assert(parameters['b' + str(l)].shape == (self.layer_dims[l], 1))
+#             assert(parameters['gamma' + str(l)].shape == (self.layer_dims[l], 1))
+#             assert(parameters['beta' + str(l)].shape == (self.layer_dims[l], 1))
+#         return parameters
 
-    def linear_forward(self,X_train, W, b):
-        """
-        Implement the linear part of a layer's forward propagation.
+#     def linear_forward(self,X_train, W, b):
+#         """
+#         Implement the linear part of a layer's forward propagation.
 
-        Arguments:
-        A -- activations from previous layer (or input data): (size of previous layer, number of examples)
-        W -- weights matrix: numpy array of shape (size of current layer, size of previous layer)
-        b -- bias vector, numpy array of shape (size of the current layer, 1)
+#         Arguments:
+#         A -- activations from previous layer (or input data): (size of previous layer, number of examples)
+#         W -- weights matrix: numpy array of shape (size of current layer, size of previous layer)
+#         b -- bias vector, numpy array of shape (size of the current layer, 1)
 
-        Returns:
-        Z -- the input of the activation function, also called pre-activation parameter 
-        cache -- a python tuple containing "A", "W" and "b" ; stored for computing the backward pass efficiently
-        """
+#         Returns:
+#         Z -- the input of the activation function, also called pre-activation parameter 
+#         cache -- a python tuple containing "A", "W" and "b" ; stored for computing the backward pass efficiently
+#         """
         
       
-        Z=np.dot(W,X_train)+b
+#         Z=np.dot(W,X_train)+b
         
      
-        cache = (X_train, W, b)
+#         cache = (X_train, W, b)
         
-        return Z, cache
+#         return Z, cache
 
 
-    def batchnorm_forward(self,Z, gamma, beta, eps=1e-5):
-        N, D = Z.shape
+#     def batchnorm_forward(self,Z, gamma, beta, eps=1e-5):
+#         N, D = Z.shape
         
-        sample_mean = Z.mean(axis=0)
-        sample_var = Z.var(axis=0)
+#         sample_mean = Z.mean(axis=0)
+#         sample_var = Z.var(axis=0)
         
-        std = np.sqrt(sample_var + eps)
-        x_centered = Z - sample_mean
-        x_norm = x_centered / std
-        out = gamma * x_norm + beta
+#         std = np.sqrt(sample_var + eps)
+#         x_centered = Z - sample_mean
+#         x_norm = x_centered / std
+#         out = gamma * x_norm + beta
         
-        cache = (x_norm, x_centered, std, gamma)
+#         cache = (x_norm, x_centered, std, gamma)
 
-        return out, cache
+#         return out, cache
 
-    def sigmoid(self,Z):
-        """
-        Compute the sigmoid of z
-        """
+#     def sigmoid(self,Z):
+#         """
+#         Compute the sigmoid of z
+#         """
 
-        A=1/(1+np.exp(-Z))
-        cache = Z
-        return A, cache
+#         A=1/(1+np.exp(-Z))
+#         cache = Z
+#         return A, cache
 
-    def leaky_relu(self,Z):
-        A=np.where(Z>0,Z,Z*0.01)
-        cache=Z
-        return A, cache
+#     def leaky_relu(self,Z):
+#         A=np.where(Z>0,Z,Z*0.01)
+#         cache=Z
+#         return A, cache
 
-    def relu(self,Z):
-        A=np.maximum(0,Z)
-        assert(A.shape == Z.shape)
-        cache = Z 
-        return A, cache
+#     def relu(self,Z):
+#         A=np.maximum(0,Z)
+#         assert(A.shape == Z.shape)
+#         cache = Z 
+#         return A, cache
 
-    def soft_max(self,Z):
-        A=exp(Z)/np.sum(exp(Z))
-        cache=Z
-        return A, cache
+#     def soft_max(self,Z):
+#         A=exp(Z)/np.sum(exp(Z))
+#         cache=Z
+#         return A, cache
 
-    def linear_activation_batch_forward(self,X_train_prev, W, b,gamma,beta, activation):
-        """
-        Implement the forward propagation for the LINEAR->ACTIVATION layer
+#     def linear_activation_batch_forward(self,X_train_prev, W, b,gamma,beta, activation):
+#         """
+#         Implement the forward propagation for the LINEAR->ACTIVATION layer
 
-        Arguments:
-        x_train_prev -- activations from previous layer (or input data): (size of previous layer, number of examples)
-        W -- weights matrix: numpy array of shape (size of current layer, size of previous layer)
-        b -- bias vector, numpy array of shape (size of the current layer, 1)
-        activation -- the activation to be used in this layer, stored as a text string: "sigmoid" or "relu"
+#         Arguments:
+#         x_train_prev -- activations from previous layer (or input data): (size of previous layer, number of examples)
+#         W -- weights matrix: numpy array of shape (size of current layer, size of previous layer)
+#         b -- bias vector, numpy array of shape (size of the current layer, 1)
+#         activation -- the activation to be used in this layer, stored as a text string: "sigmoid" or "relu"
 
-        Returns:
-        A -- the output of the activation function, also called the post-activation value 
-        cache -- a python tuple containing "linear_cache" and "activation_cache";
-                stored for computing the backward pass efficiently
-        """
+#         Returns:
+#         A -- the output of the activation function, also called the post-activation value 
+#         cache -- a python tuple containing "linear_cache" and "activation_cache";
+#                 stored for computing the backward pass efficiently
+#         """
         
-        if activation == "sigmoid":
-            Z, linear_cache = self.linear_forward(X_train_prev, W, b)
-            Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
-            A, activation_cache = self.sigmoid(Z_hat)
+#         if activation == "sigmoid":
+#             Z, linear_cache = self.linear_forward(X_train_prev, W, b)
+#             Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
+#             A, activation_cache = self.sigmoid(Z_hat)
         
-        elif activation == "relu":
-            Z, linear_cache = self.linear_forward(X_train_prev, W, b)
-            Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
-            A, activation_cache = self.relu(Z_hat)
+#         elif activation == "relu":
+#             Z, linear_cache = self.linear_forward(X_train_prev, W, b)
+#             Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
+#             A, activation_cache = self.relu(Z_hat)
             
-        elif activation == "leaky_relu":
-            Z, linear_cache = self.linear_forward(X_train_prev, W, b)
-            Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
-            A, activation_cache = self.leaky_relu(Z_hat)
-        elif activation == "soft_max":
-            Z, linear_cache = self.linear_forward(X_train_prev, W, b)
-            ###################################################################################################################siggu
-            Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
-            A, activation_cache = self.soft_max(Z)
-        cache = (linear_cache, batchnorm_cache, activation_cache)
+#         elif activation == "leaky_relu":
+#             Z, linear_cache = self.linear_forward(X_train_prev, W, b)
+#             Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
+#             A, activation_cache = self.leaky_relu(Z_hat)
+#         elif activation == "soft_max":
+#             Z, linear_cache = self.linear_forward(X_train_prev, W, b)
+#             ###################################################################################################################siggu
+#             Z_hat, batchnorm_cache = self.batchnorm_forward(Z, gamma, beta, eps=1e-5)
+#             A, activation_cache = self.soft_max(Z)
+#         cache = (linear_cache, batchnorm_cache, activation_cache)
 
-        return A, cache
+#         return A, cache
 
-    def L_model_forward(self,X_train, parameters):
-        """
-        Implement forward propagation for the [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID computation
+#     def L_model_forward(self,X_train, parameters):
+#         """
+#         Implement forward propagation for the [LINEAR->RELU]*(L-1)->LINEAR->SIGMOID computation
         
-        Arguments:
-        X -- data, numpy array of shape (input size, number of examples)
-        parameters -- output of initialize_parameters_deep()
+#         Arguments:
+#         X -- data, numpy array of shape (input size, number of examples)
+#         parameters -- output of initialize_parameters_deep()
         
-        Returns:
-        AL -- activation value from the output (last) layer
-        caches -- list of caches containing:
-                    every cache of linear_activation_forward() (there are L of them, indexed from 0 to L-1)
-        """
+#         Returns:
+#         AL -- activation value from the output (last) layer
+#         caches -- list of caches containing:
+#                     every cache of linear_activation_forward() (there are L of them, indexed from 0 to L-1)
+#         """
 
-        caches = []
-        A = X_train
-        L = len(parameters) // 2                  # number of layers in the neural network
+#         caches = []
+#         A = X_train
+#         L = len(parameters) // 2                  # number of layers in the neural network
         
-        #  [LINEAR -> RELU]*(L-1). Add "cache" to the "caches" list.
-        # The for loop starts at 1 because layer 0 is the input
-        for l in range(1, L):
-           X_train_prev = A 
-           W,b= parameters["W" + str(l)],parameters["b" + str(l)]
+#         #  [LINEAR -> RELU]*(L-1). Add "cache" to the "caches" list.
+#         # The for loop starts at 1 because layer 0 is the input
+#         for l in range(1, L):
+#            X_train_prev = A 
+#            W,b= parameters["W" + str(l)],parameters["b" + str(l)]
             
-           A, cache = self.linear_activation_batch_forward(X_train_prev,W,b,"leaky_relu")
-           caches.append(cache)
+#            A, cache = self.linear_activation_batch_forward(X_train_prev,W,b,"leaky_relu")
+#            caches.append(cache)
         
-        #  LINEAR -> SIGMOID. Add "cache" to the "caches" list.
-        W,b= parameters["W" + str(L)], parameters["b" + str(L)] 
+#         #  LINEAR -> SIGMOID. Add "cache" to the "caches" list.
+#         W,b= parameters["W" + str(L)], parameters["b" + str(L)] 
             
-        AL, cache =self.linear_activation_batch_forward(A,W,b, "soft_max")
-        caches.append(cache)
+#         AL, cache =self.linear_activation_batch_forward(A,W,b, "soft_max")
+#         caches.append(cache)
 
             
-        return AL, caches
+#         return AL, caches
 
 
-    def 
-
-
-
+#     def 
 
 
 
-network= my_neural_network(np.transpose(x.centroid),x.pyh_dens,[3,20,20,20,20,20,1])
+
+
+
+# network= my_neural_network(np.transpose(x.centroid),x.pyh_dens,[3,20,20,20,20,20,1])
 
