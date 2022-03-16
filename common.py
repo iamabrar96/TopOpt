@@ -8,17 +8,17 @@ class GMSH_helper():
         self.params= params
 
     def getNodesForPhysicalGroup(self,dimTag=(1,2)):
-        p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
-        fixeddof= (p[0]-1)*self.params.n_dim                                            # node numbers of fixddof
-        # node coordinates of fixeddof 
-        fixeddofc=np.vstack([fixeddof+i for i in range(self.params.n_dim)])          # node coordinates of fixeddof 
-        return fixeddofc
+        p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)[0]
+        p[1:]= np.roll(p[1:],-1)
+        groupdof= (p-1)*self.params.n_dim                                         
+        groupdof=np.vstack([groupdof+i for i in range(self.params.n_dim)])
+        return groupdof
 
     def free_dof(self, fixeddof):
         'Elimination approach'
 
         dof=np.arange(0,self.params.tdof)
-        freedof= np.setdiff1d(dof, fixeddof.flatten())                                                               # it contains all the dofs except the fixeddof
+        freedof= np.setdiff1d(dof, fixeddof.flatten())   
         return freedof
 
     @property
@@ -37,7 +37,7 @@ class GMSH_helper():
         '''
 
         nodetags, coord, _ =gmsh.model.mesh.getNodesByElementType(elementType= self.element_type,tag = -1, returnParametricCoord = False)
-        nodetags= nodetags.reshape(self.params.num_elems, -1).astype('int') -1 # since in python indices start with zero
+        nodetags= nodetags.reshape(self.params.num_elems, -1).astype('int')-1 # since in python indices start with zero
         
         offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)  #[0,1,2, 0,1,2, 0,1,...]
         element_dofs= np.repeat(self.params.n_dim * nodetags, self.params.n_dim, axis=1) + offset  #[3*nodetag, 3*nodetag+1, 3*nodetag+2 ...]
@@ -47,14 +47,13 @@ class GMSH_helper():
         for j in range(self.params.num_elems):
             centroids.append((np.sum(coord[j].reshape(-1,3),axis=0)/self.params.node_per_ele))
         centroids=np.vstack(centroids)
-
         return nodetags, element_dofs, centroids
     
-    def gauss_points(self, integration_type="CompositeGauss4"):
+    def gauss_points(self):
         '''
         this function takes the output of elementtype function as input  and fourth order gauss quadrature rule is applied
         '''
-        points, weights=gmsh.model.mesh.getIntegrationPoints(elementType= self.element_type, integrationType= integration_type)
+        points, weights=gmsh.model.mesh.getIntegrationPoints(elementType= self.element_type, integrationType= self.params.integration_type)
         return points, weights
  
     def basis_function(self, integration_points):

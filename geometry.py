@@ -48,7 +48,7 @@ class Rectangle_beam:
         gmsh.model.mesh.generate(3)
         gmsh.model.occ.synchronize()
         gmsh.model.mesh.recombine() 
-
+        gmsh.model.mesh.renumberNodes()
     
     def get_node_coord(self, dimTag=(-1,-1)): 
         '''
@@ -78,6 +78,9 @@ class Rectangle_beam:
 
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
         #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
+    
+    def add_center(self):
+        self.center= gmsh.model.addPhysicalGroup(1,[9],4)
 
     def geom_automatic(self):
         #give this sucker a good name
@@ -86,6 +89,7 @@ class Rectangle_beam:
         self.create_mesh()
         self.add_forcebc()
         self.add_fixedbc()
+        self.add_center()
         
 
 
@@ -111,6 +115,9 @@ class Mid_cantilever(Rectangle_beam):
 
 if __name__ == '__main__':
     params= Parameters()
-    params.geometry_type = "Mid_cantilever"
+    params.geometry_type = "Rectangle_beam"
     geom= Rectangle_beam(params)
+    geom.create_geometry()
+    geom.create_mesh()
+    gmsh.fltk.run()
     assert(isinstance(geom, Mid_cantilever))

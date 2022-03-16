@@ -40,10 +40,10 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = -1
+    force = 1
     '''Integration type'''
     integration_type="CompositeGauss4"
 
     geometry_type= "Rectangle_beam"
 
-    density_cutoff= 0.1
+    density_cutoff= 0.4

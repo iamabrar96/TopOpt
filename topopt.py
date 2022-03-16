@@ -1,9 +1,10 @@
 
+from matplotlib import pyplot as plt
 import numpy as np
 from common import GMSH_helper
 from parameters import Parameters
 from geometry import Rectangle_beam
-
+import gmsh # todo remove this later
 class FE_solver:
     def __init__(self, params:Parameters) -> None:
         self.params= params
@@ -12,8 +13,8 @@ class FE_solver:
 
 
         ################################# Initialisations ################################
-        self.integration_points, self.weights= self.helper.gauss_points(self.params.integration_type)
-
+        self.integration_points, self.weights= self.helper.gauss_points()
+        # self.weights/=2
         #For now no need for shape functions so omitted here
         _, self.shapefunc_dertv= self.helper.basis_function(self.integration_points)
         self.shapefunc_dertv= self.shapefunc_dertv.reshape(len(self.weights), -1)
@@ -21,7 +22,9 @@ class FE_solver:
         self.determinants= self.determinants.reshape(-1, len(self.weights))
 
         self.nodetags, self.element_dofs, self.centroids= self.helper.element_nodes()
-
+        self.elem_nodes_arrangement= np.array([7,4,0,3,6,5,1,2])
+        offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)
+        self.elem_nodes_arrangement= np.repeat(self.elem_nodes_arrangement*self.params.n_dim, self.params.n_dim)+ offset
         self.init_densities()
         self.prepare_system_of_equations()
 
@@ -86,7 +89,7 @@ class FE_solver:
 
         E0, Emin, p= self.params.E0, self.params.Emin, self.params.p
         
-        msimp=Emin+(np.transpose(self.phy_dens.flatten())**p)*(E0-Emin)
+        msimp=Emin+(self.phy_dens**p)*(E0-Emin)
 
         return msimp
 
@@ -111,9 +114,11 @@ class FE_solver:
         msimp= self.simp_formula()
 
         self.kg=np.zeros((self.params.tdof,self.params.tdof))
+        u,v=np.meshgrid(self.elem_nodes_arrangement, self.elem_nodes_arrangement)
+
         for i in range(self.params.num_elems):
             x,y=np.meshgrid(self.element_dofs[i], self.element_dofs[i])
-            self.kg[y,x]+= self.ke[i] * msimp[i]
+            self.kg[y,x]+= self.ke[i][v,u] * msimp[i]
         
     
     def nodal_forces(self):
@@ -123,22 +128,29 @@ class FE_solver:
         self.F=np.zeros(self.params.tdof)
         
         # Todo check for multiple entities in a physical group
-        forcedofyc= self.helper.getNodesForPhysicalGroup(dimTag=(1,2))[1]
-        self.F[forcedofyc]= self.params.force
+        forcedofy= self.helper.getNodesForPhysicalGroup(dimTag=(1,2))[1]
+        self.F[forcedofy]= self.params.force
         
     def nodal_displacements(self):
-        fixeddofc= self.helper.getNodesForPhysicalGroup(dimTag=(2,3))
-        freedof= self.helper.free_dof(fixeddofc) 
-        
+        fixeddof= self.helper.getNodesForPhysicalGroup(dimTag=(2,3))
+        freedof= self.helper.free_dof(fixeddof) 
         #solving for nodal displacements at free dofs
         x,y=np.meshgrid(freedof,freedof)
         self.U=np.zeros(self.params.tdof)
         self.U[freedof]=np.linalg.solve(self.kg[y,x],self.F[freedof])
-    
+
+    def plot_disp(self):
+        center= self.helper.getNodesForPhysicalGroup(dimTag=(1,4))[1]
+        nodes, nodes_c, _= gmsh.model.mesh.getNodes(includeBoundary=True, returnParametricCoord=False)
+        nodes_c= np.arange(0,self.params.nelx+1)
+        plt.plot(nodes_c, self.U[center])
+        plt.show()
+        
     def elemental_compliance(self):
         self.Jelem= []
+        u,v=np.meshgrid(self.elem_nodes_arrangement, self.elem_nodes_arrangement)
         for i in range(self.params.num_elems):
-            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
+            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i][v,u]), self.U[self.element_dofs[i]]))
         self.Jelem= np.array(self.Jelem)        
     
     def prepare_system_of_equations(self):
@@ -159,7 +171,6 @@ class FE_solver:
         self.globalstiffness_matrix()
         self.nodal_displacements()
         self.elemental_compliance()
-
         return self.U, self.Jelem
 
 
@@ -170,4 +181,4 @@ if __name__ == '__main__':
     solver= FE_solver(params)
     density= solver.phy_dens
     solver.solve(density)
-
+    solver.plot_disp()
