@@ -8,6 +8,7 @@ import itertools
 from numpy import exp
 import matplotlib.pyplot as plt
 from scipy.sparse import coo_matrix
+import decimal
 #######################################################################
 ''' Input Parameters'''
 #######################################################################
@@ -48,7 +49,11 @@ tdof=dof_per_node*tnodes
 max_loop=200
 ''' termination criteria'''
 tol =0.01
-
+'''multiple load_case'''
+mul_load=0                # 0 default single load, 2 multiload case
+''' filter types'''
+filter=1            # 1 default density filter , 2 for sensitivity filter
+grey_filter=1   # 1 default optimization case , 2 for grey scale filter
 ##############################################################################
 
 
@@ -96,7 +101,10 @@ class Rectangle_beam:
     '''
 
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
+        if mul_load==0:
+            self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
+        elif mul_load==1:
+            self.force_bc=gmsh.model.addPhysicalGroup(1,[5,7],2)
         #gmsh.model.setPhysicalName(1, self.force_bc, "Forced boundary condition")
 
     '''
@@ -105,23 +113,35 @@ class Rectangle_beam:
     '''
     def add_fixedbc(self):
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
+        
         #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
             
       
     def getNodesForPhysicalGroup(self,dimTag=(1,2)):
-        self.p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
-        self.forcedofy=((self.p[0]-1 )*nd_per_element)                                          # node numbers of forcedof
-        self.forcedofyc= self.forcedofy+1                                                       # node coordinate of forcedof
-        self.fixeddof=((self.p[0]-1)*nd_per_element)                                             # node numbers of fixddof
-        self.fixeddofc=np.concatenate((self.fixeddof,self.fixeddof+1,self.fixeddof+2))           # node coordinates of fixeddof 
-
+        if mul_load==0:
+            self.p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
+            ''' in case of mid cantilver only change forcedofy line  as (p[0][-1:]-1) *nd_per_element '''
+            #self.forcedofy=((self.p[0][-1:]-1 )*nd_per_element)
+            self.forcedofy=((self.p[0]-1 )*nd_per_element)                                          # node numbers of forcedof
+            self.forcedofyc= self.forcedofy+1                                                       # node coordinate of forcedof
+            ''' in case of mischell beam only change fixeddof line as ((self.p[0][0:4]-1)*nd_per_element) '''
+            #self.fixeddof=((self.p[0][0:4]-1)*nd_per_element) 
+            self.fixeddof=((self.p[0]-1)*nd_per_element)                                             # node numbers of fixddof
+            self.fixeddofc=np.concatenate((self.fixeddof,self.fixeddof+1,self.fixeddof+2))           # node coordinates of fixeddof 
+        elif mul_load==1:
+            self.p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)
+            self.forcedofy=((self.p[0][-2:]-1 )*nd_per_element)                                          # node numbers of forcedof
+            self.forcedofyc= self.forcedofy+1                                                       # node coordinate of forcedof
+            self.fixeddof=((self.p[0]-1)*nd_per_element)                                             # node numbers of fixddof
+            self.fixeddofc=np.concatenate((self.fixeddof,self.fixeddof+1,self.fixeddof+2))           # node coordinates of fixeddof 
+        #print(self.forcedofyc)
     def free_dof(self):
         self.setdiff=np.arange(0,tdof)
         self.freedof=[]                                                                # it contains all the dofs except the fixeddof
         for i in self.setdiff:
             if i not in self.fixeddofc:
                 self.freedof.append(i)
-
+        #print(self.freedof)
     def elementtype(self):
         self.my_element= 5 #gmsh.model.mesh.getElementType(familyName="Hexahedron", order=1, serendip = False)
        
@@ -135,7 +155,6 @@ class Rectangle_beam:
         self.my_nodes=np.split(self.nodetags,no_of_ele)
         self.my_coord=np.split(self.coord,no_of_ele)
         self.my_coord_edof=[]      # degrees of freedom of each element along x,y,z direction
-        
         # self.my_coord=np.split(self.coord,no_of_ele)
         # self.my_coord_edof=[]      # degrees of freedom of each element along x,y,z direction 
         
@@ -143,6 +162,7 @@ class Rectangle_beam:
 
             self.my_coord_edof.append(np.vstack((self.my_nodes[i]*3-3,self.my_nodes[i]*3-2,self.my_nodes[i]*3-1)).flatten('F'))
         self.my_coord_edof=np.vstack(self.my_coord_edof)
+        
         # obtaining center point(x,y,z) of each element 
         self.my_coord1=np.array(self.my_coord)
         self.coord2=[]
@@ -157,7 +177,7 @@ class Rectangle_beam:
     '''
     def gauss_points(self):
         self.Integration_points, self.weights=gmsh.model.mesh.getIntegrationPoints(elementType=self.my_element,integrationType="CompositeGauss4")
-
+        #print(self.weights.shape)
     def len_quad_pts(self):
         self.total_quad_pt=len(self.weights)
    
@@ -173,7 +193,6 @@ class Rectangle_beam:
         self.jacobians, self.determinants, self.coord=gmsh.model.mesh.getJacobians(elementType=self.my_element,localCoord=self.Integration_points,tag = -1, task = 0, numTasks = 1)
         self.determinants=np.array(self.determinants)
         self.determinants=self.determinants.reshape(-1,self.total_quad_pt)
-    
     '''
     input : shape function derivatives with respect to x, y ,z axis
     output: all stacked strain displacmenet matrix (B) together i.e. No. of B matrix is realted to  number of gauss points 
@@ -217,10 +236,10 @@ class Rectangle_beam:
         C[5,5]=C[3,3]
         C[2,0]=C[0,1]
         C[2,1]=C[0,1] 
-        self.C= 1/((1+nu)*(1-2*nu))*C
+        self.C= (1/((1+nu)*(1-2*nu)))*C
         self.con=[]
         for i in range(no_of_ele):
-            self.con.append(self.msimp[:,i]*C)
+            self.con.append(self.msimp[i,:]*C)
         self.con=np.sum(self.con,axis=0)
         self.con=np.array(self.con)
       
@@ -270,8 +289,8 @@ class Rectangle_beam:
         sub_a2=np.c_[K3.T,K6,K5.T,K2.T]
         sub_a3=np.c_[K4,K3,K2,K1.T]
         self.KEmat = 1/((nu+1)*(1-2*nu))*np.concatenate((sub_a,sub_a1,sub_a2,sub_a3))
+        #print(self.KEmat[18,18])
         
-
 
     '''
     obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
@@ -291,11 +310,15 @@ class Rectangle_beam:
 
     #  THIS IS FROM GMSH KE MATRICE WITHOUT DETERMINANATS FOR ONLY ONE ELEMENT
     def onelement(self):
-        self.one=self.weights[0]*(np.matmul(np.transpose(self.a[0]),np.matmul(self.con, self.a[0])))
-        print(6.31371e-3==0.23504)
-        
-
-
+        self.one=[]
+        for i in range (self.a.shape[0]):
+            self.one.append(self.weights[i]*(np.matmul(np.transpose(self.a[i]),np.matmul(self.C, self.a[i]))))
+        self.one=np.sum(self.one,axis=0)
+        self.one=np.array(self.one)
+        # print(self.one[18,18])
+        # print(np.round(self.one,4)==np.round(self.KEmat,4))
+        #self.determinants[j][i]*
+       
 
 
 
@@ -310,7 +333,7 @@ class Rectangle_beam:
             self.Nodes=np.array(self.Nodes)
             x,y=np.meshgrid(self.Nodes,self.Nodes)
             self.kg[y,x]+= self.msimp[:,i]*self.ke[i]
-    
+       
     '''
     preparing the filter function
     '''
@@ -350,75 +373,121 @@ class Rectangle_beam:
     def densities(self):
         self.des_dens=np.ones((no_of_ele,1))*volfrac
         self.pyh_dens=self.des_dens                  # physical densities are assigned a constant and unifrom values(initially)
+      
     '''
     defining the formula for the modified SIMP method(relation betwen density and youngs modulus)
     '''
     def simp_formula(self):
-        self.msimp=Emin+(np.transpose(self.pyh_dens.reshape(nelx*nely*nelz,1))**p)*(E0-Emin)
+        self.msimp=Emin+(self.pyh_dens**p)*(E0-Emin)
+      
 
     '''
     defining the nodal forces and nodal displacements
     '''
     def nodal_forces(self):
         self.F=np.zeros((tdof,1))
-        self.F[self.forcedofyc[0],0]=-1
-        self.F[self.forcedofyc[1],0]=-1
-        self.F[self.forcedofyc[2],0]=-1
+        if mul_load==0:
+            self.F[self.forcedofyc]=-1
+        elif mul_load==1:
+            self.F=np.zeros((tdof,2))
+            self.F[self.forcedofyc[0]][0]=-1
+            self.F[self.forcedofyc[1]][1]=1
 
     def nodal_displacements(self):
-        self.U=np.zeros((tdof,1))
-        x,y=np.meshgrid(self.freedof,self.freedof)
-        self.U[self.freedof]=np.linalg.solve(self.kg[y,x],self.F[self.freedof])
+        if mul_load==0:
+            self.U=np.zeros((tdof,1))
+            x,y=np.meshgrid(self.freedof,self.freedof)
+            self.U[self.freedof]=np.linalg.solve(self.kg[y,x],self.F[self.freedof])
+            ''' for large problem size iterative solver is preferrd'''
+            # tolit = 1e-8
+            # maxit = 8000
+            # M = np.diagonal(np.diagonal(self.kg[y,x]))
+            # self.U[self.freedof]=scipy.sparse.linalg.cg(self.kg[y,x],self.F[self.freedof],tolit,maxit,M)
+        elif mul_load==1:
+            self.U=np.zeros((tdof,2))
+            x,y=np.meshgrid(self.freedof,self.freedof)
+            self.U[self.freedof]=np.linalg.solve(self.kg[y,x],self.F[self.freedof])
+
+# ##############################################################################
+#         ''' 
+#             iteration  process
+
+#         '''
+# ############################################################################
+
     
-##############################################################################
-        ''' 
-            iteration  process
-
-        '''
-############################################################################
-
     def densityestimation(self):
  
         loop=0
         difference=1
         #while difference>tol and loop < max_loop:
-        if difference>tol :
-            if loop<max_loop:
-                # update global stiffness using x.globalstiffness()
-                # solve for nodal disp using x.nodaldisp()
-                # complicance
-                # flter
-                # Update densities
-                ''''minimum compliance objective function and sensitivity analysis'''
-                comp = []
-
+        while difference>tol and loop<max_loop:
+            # update global stiffness using x.globalstiffness()
+            # solve for nodal disp using x.nodaldisp()
+            # complicance
+            # flter
+            # Update densities
+            
+            ''''minimum compliance objective function and sensitivity analysis'''
+            x.globalstiffness_matrix()
+            x.nodal_displacements()
+            if mul_load==0:
+                compe = []
+                
                 for i in range(no_of_ele):
-                    temp= np.dot(self.U[self.my_coord_edof[i]].T,np.dot(self.ke[i],self.U[self.my_coord_edof[i]]))
-                    comp.append(temp)
-                comp= np.array(comp)
-                comp= np.array(comp).reshape(no_of_ele,1)
-                der_comp=(comp*( -p*(E0-Emin)*self.pyh_dens**(p-1) ))
-    
+                    temp= np.dot(self.U[self.my_coord_edof[i]].T,np.dot(self.ke[i],self.U[self.my_coord_edof[i]]))            # objective function 
+                    compe.append(temp)
+                compe= np.array(compe)
+                compe= np.array(compe).reshape(no_of_ele,1)
+                comp=np.sum(np.multiply(self.msimp,compe))                                                # complaince 
+                der_comp=np.multiply(compe,(-p*(E0-Emin)*np.power(self.pyh_dens,(p-1) )))                 # derivative of complaince
                 der_vol=np.ones((no_of_ele,1))
-                ''' use of filtering function to improve the sensitivity analysis  '''
+            elif mul_load==1:
+                compe = []
+                comp=0
+                der_comp=np.zeros((no_of_ele,1))
+                for i in range(self.F.shape[1]):
+                    self.Ue=self.U[:,i]                              # The objective function is now the sum of different load cases (in this case 2 different loads)
+                    for i in range(no_of_ele):
+                        temp= np.dot(self.Ue[self.my_coord_edof[i]].T,np.dot(self.ke[i],self.Ue[self.my_coord_edof[i]]))
+                        compe.append(temp)
+                    compe= np.array(compe)
+                    compe= np.array(compe).reshape(no_of_ele,1)
+                    comp=comp + np.sum(np.multiply(self.msimp,compe))
+                    der_comp=der_comp-np.multiply(compe,(-p*(E0-Emin)*np.power(self.pyh_dens,(p-1) )))
+                der_vol=np.ones((no_of_ele,1))
+
+            ''' use of filtering function to improve the sensitivity analysis  '''
+            if filter==1 :                                   # density filter 
                 der_comp=self.H*( der_comp/self.HS)
                 der_vol= self.H*( der_vol/self.HS)
-                ''' Optimality criteria update scheme'''
-                ##### implementing the bisection algorithm to predict the lambda value ######
-                l1=0 
-                l2=1e9
-                forward=0.2
-                while (l2-l1)/(l1+l2)>1e-3:
-                    lmid=0.5*(l2+l1)
-                    new_density= np.maximum(0.0,np.maximum(self.des_dens-forward,np.minimum(1.0,np.minimum(self.des_dens+forward,np.multiply(self.des_dens,np.sqrt(-(der_comp)/ der_vol/lmid))))))
+            elif filter==2:                                # sensitivity filter 
+                der_comp=(np.dot(self.H ,(np.multipy(self.des_dens,der_comp))))/self.HS/np.maximum(1e-3,self.des_dens)
+            ''' Optimality criteria update scheme'''
+            l1=0 
+            l2=1e9
+            forward=0.2
+            while (l2-l1)/(l1+l2)>1e-3:
+                lmid=0.5*(l2+l1)
+                new_density= np.maximum(0.0,np.maximum(self.des_dens-forward,np.minimum(1.0,np.minimum(self.des_dens+forward,np.multiply(self.des_dens,np.sqrt(-(der_comp)/ der_vol/lmid))))))
+                ''' in case of grey scale filter  '''
+                #new_density= np.maximum(0.0,np.maximum(self.des_dens-forward,np.minimum(1.0,np.minimum(self.des_dens+forward,np.multiply(self.des_dens,np.sqrt(-(der_comp)/ der_vol/lmid))**grey_filter))))
+                if filter==1 :                                    # density filter 
                     self.pyh_dens= (self.H*new_density)/self.HS
-                    if np.sum(self.pyh_dens)>volfrac*no_of_ele:
-                        l1=lmid
-                    else :
-                        l2=lmid
-                difference=abs(new_density-self.des_dens)
-                self.des_dens=new_density
-                loop=loop+1
+                elif filter==2:                                    # sensitivity filter 
+                    self.pyh_dens=new_density
+                if np.sum(self.pyh_dens)>volfrac*no_of_ele:
+                    l1=lmid
+                else :
+                    l2=lmid
+            difference=max(abs(new_density-self.des_dens))
+            self.des_dens=new_density
+            loop=loop+1
+            ''' in case of grey filter '''
+            # if loop<=20 :
+            #     grey_filter==1
+            # else :
+            #     grey_filter=grey_filter*1.01
 
     def visualize(self):
         gmsh.fltk.run()
@@ -434,17 +503,22 @@ x.create_mesh()
 # x.finalize()
 x.add_forcebc()
 x.getNodesForPhysicalGroup(dimTag=(1,2))
+#x.getNodesForPhysicalGroup(dimTag=(0,2))
+#print(x.forcedofyc)
 x.nodal_forces()
 x.add_fixedbc()
 x.getNodesForPhysicalGroup(dimTag=(2,3))
+#print(x.fixeddof)
 z=x.get_node_coord()
 x.free_dof()
+#print(x.freedof)
 x.densities()
 x.simp_formula()
+print(x.msimp.shape)
 x.elementtype()
 x.elemprop()
 x.element_nodes()
-#r1=x.my_coord[4][1],x.my_coord[0][21],x.my_coord[1][21],x.my_coord[2][21],x.my_coord[3][21]
+# r1=x.my_coord[4][1],x.my_coord[0][21],x.my_coord[1][21],x.my_coord[2][21],x.my_coord[3][21]
 x.gauss_points()
 x.len_quad_pts()
 x.basis_function()
@@ -452,23 +526,24 @@ x.split_shapefunc()
 x.Jacob()
 x.Bmat()
 x.constitutive_matrix()
-x.density_filter()
-# x.ref_element()
+# x.density_filter()
+#x.ref_element()
 x.matonelement()
 x.element_stiffness_matrix()
 x.onelement()
 
-x.globalstiffness_matrix()
-x.nodal_displacements()
-x.densityestimation()
-#r=x.U.reshape(30,3)
-#r2=r[8][1],r[24][1],r[25][1],r[26][1],r[10][1] 
-#plt.plot(r1,r2) # plotting by taking x coordinates of nodes along the x- aixs(8,24,25,26,10) w.r.t disp along y 
-#plt.show()
+# x.globalstiffness_matrix()
+# x.nodal_displacements()
+
+#x.densityestimation()
+# r=x.U.reshape(int(tdof/3),dof_per_node)
+# r2=r[8][1],r[24][1],r[25][1],r[26][1],r[10][1] 
+# plt.plot(r1,r2) # plotting by taking x coordinates of nodes along the x- aixs(8,24,25,26,10) w.r.t disp along y 
+# plt.show()
 
 #print(comp)
 # print(x.centroid)
-
+#print(x.pyh_dens)
 
 
 
