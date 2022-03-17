@@ -9,8 +9,8 @@ class Rectangle_beam:
             geom = super(Rectangle_beam, Rectangle_beam).__new__(Rectangle_beam)
         elif params.geometry_type == "Michell_beam":
             geom = super(Rectangle_beam, Michell_beam).__new__(Michell_beam)
-        elif params.geometry_type == "Distributed_load_beam":
-            geom = super(Rectangle_beam, Distributed_load_beam).__new__(Distributed_load_beam)
+        elif params.geometry_type == "multiple__load_case":
+            geom = super(Rectangle_beam, multiple__load_case).__new__(multiple__load_case)
         elif params.geometry_type == "Mid_cantilever":
             geom = super(Rectangle_beam, Mid_cantilever).__new__(Mid_cantilever)
         else:
@@ -94,20 +94,21 @@ different types of boundary conditions
 '''
 class Michell_beam(Rectangle_beam):
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(0,[14,26,17],2)
+        self.force_bc=gmsh.model.addPhysicalGroup(2,[4],2)
     def add_fixedbc(self):
-         self.fixed_bc= gmsh.model.addPhysicalGroup(1,[1,5],3)
-class Distributed_load_beam(Rectangle_beam):
-    def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(1,[1,5],2)
-    def add_fixedbc(self):
-        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[4],3)
+         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[3],3)
+
 class Mid_cantilever(Rectangle_beam):
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(0,[11,12],2)
+        self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
     def add_fixedbc(self):
         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
 
+class multiple__load_case(Rectangle_beam):
+    def add_forcebc(self):
+        self.force_bc=gmsh.model.addPhysicalGroup(1,[5,7],2)
+    def add_fixed(self):
+        self.fixed_bc=gmsh.model.add_physical_group(2,[1],3)
 
 if __name__ == '__main__':
     params= Parameters()
