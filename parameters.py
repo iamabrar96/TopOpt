@@ -47,3 +47,8 @@ class Parameters:
     geometry_type= "Rectangle_beam"
 
     density_cutoff= 0.5
+    '''multiple load_case'''
+    mul_load=0                   # 0 default single load, 2 multiload case
+    ''' filter types'''
+    filter=1            # 1 default density filter , 2 for sensitivity filter
+    grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
