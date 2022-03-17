@@ -14,9 +14,9 @@ class Parameters:
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
-    nelx=10
+    nelx=30
     ''' number of element in y direction'''
-    nely=5
+    nely=10
     ''' number of element in z direction '''
     nelz=2
     ''' volume fraction limit '''
@@ -40,7 +40,7 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = -1
+    force = 1
     '''Integration type'''
     integration_type="CompositeGauss4"
 
@@ -52,3 +52,4 @@ class Parameters:
     ''' filter types'''
     filter=1            # 1 default density filter , 2 for sensitivity filter
     grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
+    density_cutoff= 0.4
