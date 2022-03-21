@@ -6,7 +6,7 @@ from parameters import Parameters
 from topopt import FE_solver
 from scipy.sparse import coo_matrix
 import gmsh
-
+from tqdm import tqdm
 class SimpOptimizer:
     def __init__(self, params:Parameters) -> None:
         self.params = params
@@ -24,7 +24,7 @@ class SimpOptimizer:
 
         E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
         
-        for loop in range(self.params.max_loop):
+        for loop in tqdm(range(self.params.max_loop)):
             # update global stiffness using x.globalstiffness()
             # solve for nodal disp using x.nodaldisp()
             # complicance
@@ -49,9 +49,12 @@ class SimpOptimizer:
             l1=0 
             l2=1e9
             forward=0.2
+            dens_backward= old_dens-forward
+            dens_forward= old_dens+forward
+            sqrt_d_Jelem= np.sqrt(-d_Jelem/ d_vol)
             while (l2-l1)/(l1+l2)>1e-3:
                 lmid=0.5*(l2+l1)
-                new_dens= np.maximum(0.0,np.maximum(old_dens-forward, np.minimum(1.0,np.minimum(old_dens+forward, old_dens*np.sqrt(-d_Jelem/ d_vol/lmid)))))
+                new_dens= np.maximum(0.0,np.maximum(dens_backward, np.minimum(1.0,np.minimum(dens_forward, old_dens*sqrt_d_Jelem/np.sqrt(lmid)))))
                 phy_dens= self.H.dot(new_dens/self.HS)
                 if np.sum(phy_dens)>self.params.volfrac*self.params.num_elems:
                     l1=lmid
@@ -124,6 +127,7 @@ class SimpOptimizer:
 
 
 if __name__=='__main__':
+    
     params = Parameters()
     geometry = Rectangle_beam(params)
     geometry.geom_automatic()

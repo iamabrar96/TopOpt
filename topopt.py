@@ -1,7 +1,8 @@
 
 from matplotlib import pyplot as plt
 import numpy as np
-from common import GMSH_helper
+from scipy import  linalg
+from common import GMSH_helper, lstsq
 from parameters import Parameters
 from geometry import Rectangle_beam
 import gmsh # todo remove this later
@@ -14,17 +15,17 @@ class FE_solver:
 
         ################################# Initialisations ################################
         self.integration_points, self.weights= self.helper.gauss_points()
+
         # self.weights/=2
         #For now no need for shape functions so omitted here
         _, self.shapefunc_dertv= self.helper.basis_function(self.integration_points)
         self.shapefunc_dertv= self.shapefunc_dertv.reshape(len(self.weights), -1)
+
         self.determinants= self.helper.Jacob(self.integration_points)
         self.determinants= self.determinants.reshape(-1, len(self.weights))
 
         self.nodetags, self.element_dofs, self.centroids= self.helper.element_nodes()
-        self.elem_nodes_arrangement= np.array([7,4,0,3,6,5,1,2])
-        offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)
-        self.elem_nodes_arrangement= np.repeat(self.elem_nodes_arrangement*self.params.n_dim, self.params.n_dim)+ offset
+        
         self.init_densities()
         self.prepare_system_of_equations()
 
@@ -97,15 +98,15 @@ class FE_solver:
         '''
         obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
         '''
-        self.ke = []
+        k_ref= []
+        for i in range(len(self.B_mat)):
+            k_ref.append(self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
+        k_ref= np.array(k_ref)
+        
+        self.ke=[]
         for j in range(self.params.num_elems):
-            k=[]
-            for i in range(len(self.B_mat)):
-                k.append(self.determinants[j][i]*self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
-            k= np.sum(k,axis = 0)
-            self.ke.append(k)
-            
-        self.ke = np.array(self.ke)
+            self.ke.append((self.determinants[j][:,None,None]*k_ref).sum(axis=0))
+        self.ke= np.array(self.ke)
 
     def globalstiffness_matrix(self):
         '''
@@ -114,11 +115,10 @@ class FE_solver:
         msimp= self.simp_formula()
 
         self.kg=np.zeros((self.params.tdof,self.params.tdof))
-        u,v=np.meshgrid(self.elem_nodes_arrangement, self.elem_nodes_arrangement)
 
         for i in range(self.params.num_elems):
             x,y=np.meshgrid(self.element_dofs[i], self.element_dofs[i])
-            self.kg[y,x]+= self.ke[i][v,u] * msimp[i]
+            self.kg[y,x]+= self.ke[i] * msimp[i]
         
     
     def nodal_forces(self):
@@ -128,8 +128,9 @@ class FE_solver:
         self.F=np.zeros(self.params.tdof)
         
         # Todo check for multiple entities in a physical group
-        forcedofy= self.helper.getNodesForPhysicalGroup(dimTag=(1,2))[1]
-        self.F[forcedofy]= self.params.force
+        forcedof= self.helper.getNodesForPhysicalGroup(dimTag=(1,2)).T
+        self.F[forcedof]= self.params.force
+
         
     def nodal_displacements(self):
         fixeddof= self.helper.getNodesForPhysicalGroup(dimTag=(2,3))
@@ -137,7 +138,7 @@ class FE_solver:
         #solving for nodal displacements at free dofs
         x,y=np.meshgrid(freedof,freedof)
         self.U=np.zeros(self.params.tdof)
-        self.U[freedof]=np.linalg.solve(self.kg[y,x],self.F[freedof])
+        self.U[freedof]= np.linalg.solve(self.kg[y,x],self.F[freedof])
 
     def plot_disp(self):
         center= self.helper.getNodesForPhysicalGroup(dimTag=(1,4))[1]
@@ -148,9 +149,8 @@ class FE_solver:
         
     def elemental_compliance(self):
         self.Jelem= []
-        u,v=np.meshgrid(self.elem_nodes_arrangement, self.elem_nodes_arrangement)
         for i in range(self.params.num_elems):
-            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i][v,u]), self.U[self.element_dofs[i]]))
+            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
         self.Jelem= np.array(self.Jelem)        
     
     def prepare_system_of_equations(self):
@@ -175,10 +175,19 @@ class FE_solver:
 
 
 if __name__ == '__main__':
+    # import cProfile, pstats
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
     params= Parameters()
     geometry= Rectangle_beam(params)
     geometry.geom_automatic()
     solver= FE_solver(params)
     density= solver.phy_dens
     solver.solve(density)
-    solver.plot_disp()
+    
+    # profiler.disable()
+    # stats = pstats.Stats(profiler).sort_stats('tottime')
+    # stats.print_stats()   
+
+

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+import numpy as np
 
 @dataclass
 class Parameters:
@@ -18,7 +18,7 @@ class Parameters:
     ''' number of element in y direction'''
     nely=10
     ''' number of element in z direction '''
-    nelz=2
+    nelz=3
     ''' volume fraction limit '''
     volfrac=0.3                      
     ''' penalisation power for SIMP interpolaion ''' 
@@ -40,7 +40,7 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = 1
+    force = np.array([0, -1, 0])
     '''Integration type'''
     integration_type="CompositeGauss4"
 

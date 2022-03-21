@@ -1,3 +1,4 @@
+from platform import node
 import gmsh
 from matplotlib.pyplot import axis
 import numpy as np
@@ -9,7 +10,7 @@ class GMSH_helper():
 
     def getNodesForPhysicalGroup(self,dimTag=(1,2)):
         p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)[0]
-        p[1:]= np.roll(p[1:],-1)
+        p[1:]= np.roll(p[1:],-1) #boundary nodes come in fornt like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
         groupdof= (p-1)*self.params.n_dim                                         
         groupdof=np.vstack([groupdof+i for i in range(self.params.n_dim)])
         return groupdof
@@ -18,7 +19,7 @@ class GMSH_helper():
         'Elimination approach'
 
         dof=np.arange(0,self.params.tdof)
-        freedof= np.setdiff1d(dof, fixeddof.flatten())   
+        freedof= np.setdiff1d(dof, fixeddof.reshape(-1))   
         return freedof
 
     @property
@@ -38,10 +39,10 @@ class GMSH_helper():
 
         nodetags, coord, _ =gmsh.model.mesh.getNodesByElementType(elementType= self.element_type,tag = -1, returnParametricCoord = False)
         nodetags= nodetags.reshape(self.params.num_elems, -1).astype('int')-1 # since in python indices start with zero
+        nodetags[:]= nodetags[:,[2,6,7,3,1,5,4,0]] #transform according to the reference element
         
         offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)  #[0,1,2, 0,1,2, 0,1,...]
         element_dofs= np.repeat(self.params.n_dim * nodetags, self.params.n_dim, axis=1) + offset  #[3*nodetag, 3*nodetag+1, 3*nodetag+2 ...]
-
         coord= coord.reshape(self.params.num_elems, -1)
         centroids=[]
         for j in range(self.params.num_elems):
@@ -83,19 +84,26 @@ class Topology_viz:
         self.step = 0
         self.t = gmsh.view.add("Topology Visualization")
 
-    def add_view(self, temp):
-        densities= temp.copy()
-        densities[densities<self.params.density_cutoff] = 0.0
+    def add_view(self, densities):
+        filter= densities>self.params.density_cutoff
         self.step+=1
         ele_tag, _= gmsh.model.mesh.getElementsByType(5)
-
+        
         gmsh.view.addModelData(
                 self.t,
                 self.step,
                 self.params.geometry_type,
                 "ElementData",
-                ele_tag,  # tags of all 3d elements
-                densities[:, None])  # data, per element should be of shape (n, 1)
+                ele_tag[filter],  # tags of all 3d elements
+                densities[filter][:, None])  # data, per element should be of shape (n, 1)
     
     def visualize(self):
         gmsh.fltk.run()
+
+def lstsq(A, b):
+    AA = A.T @ A
+    bA = b @ A
+    D, U = np.linalg.eigh(AA)
+    Ap = (U * np.sqrt(D)).T
+    bp = bA @ U / np.sqrt(D)
+    return np.linalg.lstsq(Ap, bp, rcond=None)
