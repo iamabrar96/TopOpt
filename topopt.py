@@ -1,11 +1,13 @@
 
 from matplotlib import pyplot as plt
 import numpy as np
-from scipy import  linalg
-from common import GMSH_helper, lstsq
+from common import GMSH_helper
 from parameters import Parameters
 from geometry import Rectangle_beam
 import gmsh # todo remove this later
+from scipy.linalg import  cho_factor, LinAlgError
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import spsolve
 class FE_solver:
     def __init__(self, params:Parameters) -> None:
         self.params= params
@@ -90,7 +92,7 @@ class FE_solver:
 
         E0, Emin, p= self.params.E0, self.params.Emin, self.params.p
         
-        msimp=Emin+(self.phy_dens**p)*(E0-Emin)
+        msimp=Emin+(0.01+self.phy_dens)**p*(E0-Emin)
 
         return msimp
 
@@ -103,24 +105,22 @@ class FE_solver:
             k_ref.append(self.weights[i]*np.matmul(np.transpose(self.B_mat[i]),np.matmul(self.C, self.B_mat[i])))
         k_ref= np.array(k_ref)
         
-        self.ke=[]
-        for j in range(self.params.num_elems):
-            self.ke.append((self.determinants[j][:,None,None]*k_ref).sum(axis=0))
-        self.ke= np.array(self.ke)
+        # Multiply the jacobian determinants to get the element stiffness matrices
+        self.ke= (self.determinants[...,np.newaxis, np.newaxis]*k_ref[np.newaxis]).sum(axis=1)
 
     def globalstiffness_matrix(self):
         '''
         forming of global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
         '''
         msimp= self.simp_formula()
+        ke2= self.ke.reshape(self.params.num_elems, -1)
 
-        self.kg=np.zeros((self.params.tdof,self.params.tdof))
+        iK= np.repeat(self.element_dofs, self.params.node_per_ele*self.params.n_dim, axis=0).ravel()
+        jK= np.repeat(self.element_dofs, self.params.node_per_ele*self.params.n_dim, axis=1).ravel()
+        vK= (ke2*msimp[:, np.newaxis]).ravel()
 
-        for i in range(self.params.num_elems):
-            x,y=np.meshgrid(self.element_dofs[i], self.element_dofs[i])
-            self.kg[y,x]+= self.ke[i] * msimp[i]
-        
-    
+        self.kg = coo_matrix((vK, (iK, jK)), shape= (self.params.tdof, self.params.tdof)).tocsc()
+
     def nodal_forces(self):
         '''
         defining the nodal forces and nodal displacements
@@ -138,7 +138,10 @@ class FE_solver:
         #solving for nodal displacements at free dofs
         x,y=np.meshgrid(freedof,freedof)
         self.U=np.zeros(self.params.tdof)
-        self.U[freedof]= np.linalg.solve(self.kg[y,x],self.F[freedof])
+
+        self.U[freedof]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof])
+         
+
 
     def plot_disp(self):
         center= self.helper.getNodesForPhysicalGroup(dimTag=(1,4))[1]
@@ -151,8 +154,12 @@ class FE_solver:
         self.Jelem= []
         for i in range(self.params.num_elems):
             self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
-        self.Jelem= np.array(self.Jelem)        
-    
+        self.Jelem= np.array(self.Jelem)    
+
+        #for some reasons not known this vectorized implementation is slower than the iterative one
+        # self.Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
+        # self.Jelem= (self.Jelem * self.U[self.element_dofs]).sum(axis=1)
+
     def prepare_system_of_equations(self):
         self.Bmat()
         self.constitutive_matrix()

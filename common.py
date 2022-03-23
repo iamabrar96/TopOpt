@@ -98,12 +98,9 @@ class Topology_viz:
                 densities[filter][:, None])  # data, per element should be of shape (n, 1)
     
     def visualize(self):
-        gmsh.fltk.run()
+        gmsh.option.setNumber('Geometry.Curves',0)
+        gmsh.option.setNumber('Geometry.Points',0)
+        gmsh.option.setNumber('Mesh.SurfaceEdges',0)
+        gmsh.option.setNumber('Mesh.VolumeEdges',0)
 
-def lstsq(A, b):
-    AA = A.T @ A
-    bA = b @ A
-    D, U = np.linalg.eigh(AA)
-    Ap = (U * np.sqrt(D)).T
-    bp = bA @ U / np.sqrt(D)
-    return np.linalg.lstsq(Ap, bp, rcond=None)
+        gmsh.fltk.run()
