@@ -8,10 +8,8 @@ class GMSH_helper():
     def __init__(self, params: Parameters) -> None:
         self.params= params
 
-    def getNodesForPhysicalGroup(self,dimTag=(1,2)):
-        p=gmsh.model.mesh.getNodesForPhysicalGroup(*dimTag)[0]
-        p[1:]= np.roll(p[1:],-1) #boundary nodes come in fornt like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
-        groupdof= (p-1)*self.params.n_dim                                         
+    def getDofsForNodeTags(self, tags):
+        groupdof= (tags-1)*self.params.n_dim                                         
         groupdof=np.vstack([groupdof+i for i in range(self.params.n_dim)])
         return groupdof
 
@@ -71,8 +69,6 @@ class GMSH_helper():
     
     def get_entities_for_physical_group(self):
         physical_group=gmsh.model.getPhysicalGroups()
-    
-    
     
     def finalize(self):
         gmsh.finalize()

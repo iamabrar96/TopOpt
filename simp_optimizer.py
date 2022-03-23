@@ -129,8 +129,6 @@ class SimpOptimizer:
 if __name__=='__main__':
     
     params = Parameters()
-    geometry = Rectangle_beam(params)
-    geometry.geom_automatic()
     op = SimpOptimizer(params)
     dens= op.densityestimation()
     op.display_topology()

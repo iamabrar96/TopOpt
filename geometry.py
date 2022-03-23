@@ -1,3 +1,4 @@
+from xml.etree.ElementInclude import include
 import gmsh
 import numpy as np
 from parameters import Parameters
@@ -50,6 +51,12 @@ class Rectangle_beam:
         gmsh.model.mesh.recombine() 
         gmsh.model.mesh.renumberNodes()
     
+    def visualize(self):
+        gmsh.option.setNumber('Geometry.CurveLabels',1)
+        gmsh.option.setNumber('Geometry.PointLabels',1)
+        gmsh.option.setNumber('Mesh.NodeLabels',1)
+        gmsh.fltk.run()
+    
     def get_node_coord(self, dimTag=(-1,-1)): 
         '''
         This function gives the nodes and coordinates of the entire geometry
@@ -66,8 +73,7 @@ class Rectangle_beam:
         It returns the tag number which in  this case  is 2
         '''
 
-        self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
-        #gmsh.model.setPhysicalName(1, self.force_bc, "Forced boundary condition")
+        self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(1, 5, includeBoundary=True)[0])
 
     
     def add_fixedbc(self):
@@ -76,11 +82,15 @@ class Rectangle_beam:
         similarly it also returns the tag number which in this case is 3
         '''
 
-        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
-        #gmsh.model.setPhysicalName(1, self.fixed_bc, "Fixed boundary condition")
+        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
+
     
     def add_center(self):
-        self.center= gmsh.model.addPhysicalGroup(1,[9],4)
+        self.centerNodeTags= gmsh.model.mesh.getNodes(1, 9, includeBoundary=True)[0]
+
+        #boundary nodes come in fornt like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
+        self.centerNodeTags[-1], self.centerNodeTags[-2]= self.centerNodeTags[-2], self.centerNodeTags[-1]
+        self.centerNodeTags[:]= np.roll(self.centerNodeTags[:],1) 
 
     def geom_automatic(self):
         #give this sucker a good name

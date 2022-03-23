@@ -11,6 +11,8 @@ from scipy.sparse.linalg import spsolve
 class FE_solver:
     def __init__(self, params:Parameters) -> None:
         self.params= params
+        self.geometry= Rectangle_beam(params)
+        self.geometry.geom_automatic()
         self.helper= GMSH_helper(params)
 
 
@@ -128,12 +130,12 @@ class FE_solver:
         self.F=np.zeros(self.params.tdof)
         
         # Todo check for multiple entities in a physical group
-        forcedof= self.helper.getNodesForPhysicalGroup(dimTag=(1,2)).T
+        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags).T
         self.F[forcedof]= self.params.force
 
         
     def nodal_displacements(self):
-        fixeddof= self.helper.getNodesForPhysicalGroup(dimTag=(2,3))
+        fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
         freedof= self.helper.free_dof(fixeddof) 
         #solving for nodal displacements at free dofs
         x,y=np.meshgrid(freedof,freedof)
@@ -144,8 +146,7 @@ class FE_solver:
 
 
     def plot_disp(self):
-        center= self.helper.getNodesForPhysicalGroup(dimTag=(1,4))[1]
-        nodes, nodes_c, _= gmsh.model.mesh.getNodes(includeBoundary=True, returnParametricCoord=False)
+        center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[1]
         nodes_c= np.arange(0,self.params.nelx+1)
         plt.plot(nodes_c, self.U[center])
         plt.show()
@@ -187,12 +188,11 @@ if __name__ == '__main__':
     # profiler.enable()
 
     params= Parameters()
-    geometry= Rectangle_beam(params)
-    geometry.geom_automatic()
     solver= FE_solver(params)
     density= solver.phy_dens
     solver.solve(density)
-    
+    solver.plot_disp()
+    # solver.geometry.visualize()
     # profiler.disable()
     # stats = pstats.Stats(profiler).sort_stats('tottime')
     # stats.print_stats()   
