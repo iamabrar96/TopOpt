@@ -69,17 +69,17 @@ class Rectangle_beam:
 
     def add_forcebc(self):
         '''
-        It defines the point load  in y direction on specified nodal positions.
-        It returns the tag number which in  this case  is 2
+        It defines the nodal points where load  is applied
+        load applied on the right end of the beam
         '''
 
         self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(1, 5, includeBoundary=True)[0])
-
-    
+     
+   
     def add_fixedbc(self):
         '''
         It defines the nodal points where there is no displacement .i.e. the boundary condition are fixed .
-        similarly it also returns the tag number which in this case is 3
+        nodes on the left surface of the beam are fixed
         '''
 
         self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
@@ -108,21 +108,46 @@ different types of boundary conditions
 '''
 class Michell_beam(Rectangle_beam):
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(2,[4],2)
+        # load applied on the whole top surface excluding boundary nodes
+        self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(2, 4, includeBoundary=False)[0])
     def add_fixedbc(self):
-         self.fixed_bc= gmsh.model.addPhysicalGroup(2,[3],3)
-
+        # fixed  boundary nodes of the bottom surface
+        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,3, includeBoundary=True)[0])
+        self.fixedNodeTags=self.fixedNodeTags[:4]       
+        
 class Mid_cantilever(Rectangle_beam):
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(1,[5],2)
+        # load applied on the mid point of the right end of the beam
+        self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
+        print(self.forceNodeTags)
+        # when nelz is even
+        self.forceNodeTags= self.forceNodeTags[int((self.params.nelz/2)-1)] 
+        # when nelz is odd
+        #self.forceNodeTags= self.forceNodeTags[int(self.params.nelz/2)]
+        self.forceNodeTags=self.forceNodeTags.astype(int)
+        print(self.forceNodeTags)
     def add_fixedbc(self):
-        self.fixed_bc= gmsh.model.addPhysicalGroup(2,[1],3)
+        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
 
 class multiple__load_case(Rectangle_beam):
     def add_forcebc(self):
-        self.force_bc=gmsh.model.addPhysicalGroup(1,[5,7],2)
+        # mid point load applied opposite to each other in two different direction(up, down)
+        # when nelz is even
+        self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
+        self.forceNodeTags=np.atleast_1d(self.forceNodeTags[int((self.params.nelz/2)-1)])
+        self.forceNodeTags2= (gmsh.model.mesh.getNodes(1, 7, includeBoundary=False)[0])
+        self.forceNodeTags1=np.atleast_1d(self.forceNodeTags2[int((self.params.nelz/2)-1)])
+        self.forceNodeTags=np.concatenate((self.forceNodeTags,self.forceNodeTags1))
+        print(self.forceNodeTags)
+        # when nelz is odd
+        # self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
+        # self.forceNodeTags=np.atleast_1d(self.forceNodeTags[int((self.params.nelz/2))])
+        # self.forceNodeTags2= (gmsh.model.mesh.getNodes(1, 7, includeBoundary=False)[0])
+        # self.forceNodeTags1=np.atleast_1d(self.forceNodeTags2[int((self.params.nelz/2))])
+        # self.forceNodeTags=np.concatenate((self.forceNodeTags,self.forceNodeTags1))
     def add_fixed(self):
-        self.fixed_bc=gmsh.model.add_physical_group(2,[1],3)
+        #  nodes on the left surface of the beam are fixed
+        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
 
 if __name__ == '__main__':
     params= Parameters()
