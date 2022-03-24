@@ -108,13 +108,16 @@ different types of boundary conditions
 '''
 class Michell_beam(Rectangle_beam):
     def add_forcebc(self):
-        # load applied on the whole top surface excluding boundary nodes
+        # point load applied at the midpoint of the top surface of the beam
         self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(2, 4, includeBoundary=False)[0])
+        self.forceNodeTags= self.forceNodeTags[int((self.params.nelx/2)-1)]
+        self.forceNodeTags=self.forceNodeTags.astype(int)
+
     def add_fixedbc(self):
         # fixed  boundary nodes of the bottom surface
         self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,3, includeBoundary=True)[0])
         self.fixedNodeTags=self.fixedNodeTags[:4]       
-        
+        print(self.fixedNodeTags)
 class Mid_cantilever(Rectangle_beam):
     def add_forcebc(self):
         # load applied on the mid point of the right end of the beam
