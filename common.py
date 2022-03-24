@@ -9,9 +9,9 @@ class GMSH_helper():
         self.params= params
 
     def getDofsForNodeTags(self, tags):
-        groupdof= (tags-1)*self.params.n_dim                                         
-        groupdof=np.vstack([groupdof+i for i in range(self.params.n_dim)])
-        return groupdof
+        nodeDof= (tags-1)*self.params.n_dim                                         
+        nodeDof=np.vstack([nodeDof+i for i in range(self.params.n_dim)])
+        return nodeDof
 
     def free_dof(self, fixeddof):
         'Elimination approach'
@@ -84,7 +84,7 @@ class Topology_viz:
         filter= densities>self.params.density_cutoff
         self.step+=1
         ele_tag, _= gmsh.model.mesh.getElementsByType(5)
-        
+
         gmsh.view.addModelData(
                 self.t,
                 self.step,

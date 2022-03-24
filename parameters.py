@@ -18,7 +18,7 @@ class Parameters:
     ''' number of element in y direction'''
     nely=10
     ''' number of element in z direction '''
-    nelz=3
+    nelz=2
     ''' volume fraction limit '''
     volfrac=0.3                      
     ''' penalisation power for SIMP interpolaion ''' 
@@ -38,7 +38,7 @@ class Parameters:
     ''' maximum nuber of iterations'''
     max_loop=200
     ''' termination criteria'''
-    tol =0.01
+    tol =0.001
     '''Force magnitude'''
     force = np.array([0, -1, 0])
     '''Integration type'''
@@ -46,10 +46,9 @@ class Parameters:
 
     geometry_type= "Rectangle_beam"
 
-    density_cutoff= 0.5
+    density_cutoff= 0.4
     '''multiple load_case'''
     mul_load=0                   # 0 default single load, 2 multiload case
     ''' filter types'''
     filter=1            # 1 default density filter , 2 for sensitivity filter
     grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
-    density_cutoff= 0.4

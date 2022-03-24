@@ -4,10 +4,9 @@ import numpy as np
 from common import GMSH_helper
 from parameters import Parameters
 from geometry import Rectangle_beam
-import gmsh # todo remove this later
-from scipy.linalg import  cho_factor, LinAlgError
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
+from scipy.linalg import  cho_factor, LinAlgError
 class FE_solver:
     def __init__(self, params:Parameters) -> None:
         self.params= params
@@ -122,6 +121,13 @@ class FE_solver:
         vK= (ke2*msimp[:, np.newaxis]).ravel()
 
         self.kg = coo_matrix((vK, (iK, jK)), shape= (self.params.tdof, self.params.tdof)).tocsc()
+
+        # Check for Positive definitedness
+        # try:
+        #     cho_factor(self.kg.toarray())
+        #     print("Stiffness matrix is Symmetric and Positive definite")
+        # except LinAlgError:
+        #     print("Stiffness matrix is not Symmetric and Positive definite")
 
     def nodal_forces(self):
         '''

@@ -1,4 +1,3 @@
-from xml.etree.ElementInclude import include
 import gmsh
 import numpy as np
 from parameters import Parameters
@@ -126,7 +125,7 @@ class multiple__load_case(Rectangle_beam):
 
 if __name__ == '__main__':
     params= Parameters()
-    params.geometry_type = "Rectangle_beam"
+    params.geometry_type = "Mid_cantilever"
     geom= Rectangle_beam(params)
     geom.create_geometry()
     geom.create_mesh()
