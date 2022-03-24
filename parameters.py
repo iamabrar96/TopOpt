@@ -14,11 +14,11 @@ class Parameters:
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
-    nelx=30
+    nelx=4
     ''' number of element in y direction'''
-    nely=10
+    nely=1
     ''' number of element in z direction '''
-    nelz=3
+    nelz=2
     ''' volume fraction limit '''
     volfrac=0.3                      
     ''' penalisation power for SIMP interpolaion ''' 
@@ -40,11 +40,12 @@ class Parameters:
     ''' termination criteria'''
     tol =0.01
     '''Force magnitude'''
-    force = np.array([0, -1, 0])
+    #force = np.array([0, -1, 0])
+    force1 = np.array([0, list([-1,1]), 0],dtype=object) # for two loads in opposite y direction 
     '''Integration type'''
     integration_type="CompositeGauss4"
 
-    geometry_type= "Rectangle_beam"
+    geometry_type= "multiple__load_case"
 
     density_cutoff= 0.5
     '''multiple load_case'''
