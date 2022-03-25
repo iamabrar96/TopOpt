@@ -9,13 +9,16 @@ class GMSH_helper():
         self.params= params
 
     def getDofsForNodeTags(self, tags):
-        nodeDof= (tags-1)*self.params.n_dim                                         
-        nodeDof=np.vstack([nodeDof+i for i in range(self.params.n_dim)])
+        assert isinstance(tags, list)
+        nodeDof= []
+        for tag in tags:
+            temp= (tag-1)*self.params.n_dim                                         
+            nodeDof.append(np.vstack([temp+i for i in range(self.params.n_dim)]).T)
         return nodeDof
 
     def free_dof(self, fixeddof):
         'Elimination approach'
-
+        fixeddof= np.array(fixeddof)
         dof=np.arange(0,self.params.tdof)
         freedof= np.setdiff1d(dof, fixeddof.reshape(-1))   
         return freedof

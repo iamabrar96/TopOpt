@@ -131,64 +131,47 @@ class FE_solver:
 
     def nodal_forces(self):
 
-        self.F=np.zeros(self.params.tdof)
-        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags).T
-        self.F[forcedof]= self.params.force
+        self.F=np.zeros((self.params.tdof, self.params.num_load))
 
-        '''in case of multi load (i.e. two loads in opposite direction with each other)'''
-        '''UNCOMMENT THE BELOW 3 LINES  '''
-        ''' ALSO MAKE SURE TO UNCOMMENT THE force1 VARIABLE IN parameters.py for multiload'''
-        # self.F=np.zeros((self.params.tdof,2))
-        # self.F[forcedof[0,1],0]= self.params.force1[1][0]
-        # self.F[forcedof[1,1],1]= self.params.force1[1][1]
+        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags)
+        for i in range(self.params.num_load):
+            self.F[forcedof[i], i]= self.params.force[i]
 
     def nodal_displacements(self):
+        """Solving for nodal displacements at free dofs"""
+
         fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
         freedof= self.helper.free_dof(fixeddof) 
-        #solving for nodal displacements at free dofs
-        x,y=np.meshgrid(freedof,freedof)
-        self.U=np.zeros(self.params.tdof)
 
-        self.U[freedof]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof])
-
-        '''*****************************************************************************'''
-        '''in case of multi load (i.e. two loads in opposite direction with each other)'''
-        ''' UNCOMMENT THE BELOW 3 LINES '''
-        # x,y=np.meshgrid(freedof,freedof)
-        # self.U=np.zeros((self.params.tdof,2))
-
-        # self.U[freedof]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof])
-        '''*********************************************************************************'''
+        self.U=np.zeros((self.params.tdof, self.params.num_load))
+        for i in range(self.params.num_load):
+            self.U[freedof, i]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof, i])
 
     def plot_disp(self):
         center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[1]
         nodes_c= np.arange(0,self.params.nelx+1)
         fig,ax=plt.subplots(figsize = (8,6))
-        ax.plot(nodes_c, self.U[center], marker = '*', color = 'blue')
+        
+        for i in range(self.params.num_load):
+            ax.plot(nodes_c, self.U[center, i], marker = '*', color = 'blue')
+
         ax.set_title("Nodes along x-axis vs Displacement along y-axis",size = 14)
         ax.set_xlabel("x coordinates",size = 12)
         ax.set_ylabel("U_y",size = 12)
-        fig.savefig("Rectangle_beam")  
+        # fig.savefig("Rectangle_beam")  
         plt.show()
 
         
     def elemental_compliance(self):
-        self.Jelem= []
-        for i in range(self.params.num_elems):
-            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
-        self.Jelem= np.array(self.Jelem)    
+        """
+        Compute element compliances
+        """
 
-        '''************************************************************************'''
-        '''In case of multi load (i.e. two loads in opposite direction with each other)
-        The objective function is now the sum of different load cases (in this case 2 different loads)'''
-       
-        ''' UNCOMMENT THE BELOW 5 LINES TO RUN THE FOR THE CASE OF MULTILOAD  '''       
-        # self.Jelem= np.zeros((self.params.num_elems))
-        # for i in range(self.F.shape[1]):
-        #     self.Ue=self.U[:,i] 
-        #     for i in range(self.params.num_elems):
-        #         self.Jelem[i]+=(np.dot(np.dot(self.Ue[self.element_dofs[i]], self.ke[i]), self.Ue[self.element_dofs[i]])) 
-        '''*****************************************************************************'''
+        self.Jelem= np.zeros(self.params.num_elems)
+        for i in range(self.params.num_elems):
+            for j in range(self.params.num_load):
+                self.Jelem[i]+=(np.dot(np.dot(self.U[self.element_dofs[i], j], self.ke[i]), self.U[self.element_dofs[i], j])) 
+
         #for some reasons not known this vectorized implementation is slower than the iterative one
         # self.Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
         # self.Jelem= (self.Jelem * self.U[self.element_dofs]).sum(axis=1)
@@ -199,15 +182,16 @@ class FE_solver:
         self.element_stiffness_matrix()
         self.nodal_forces()
 
-    def solve(self, new_density):
+    def solve(self, new_density= None):
         '''
         solve for nodal displacements and element compliance for given elemental densities 
         returns 
             nodal_displacements 
             element compliances
         '''
+        if new_density is not None:
+            self.phy_dens= new_density
 
-        self.phy_dens= new_density
         self.globalstiffness_matrix()
         self.nodal_displacements()
         self.elemental_compliance()
