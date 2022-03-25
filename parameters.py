@@ -14,11 +14,11 @@ class Parameters:
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
-    nelx=4
+    nelx=60
     ''' number of element in y direction'''
-    nely=1
+    nely=20
     ''' number of element in z direction '''
-    nelz=2
+    nelz=4
     ''' volume fraction limit '''
     volfrac=0.3                      
     ''' penalisation power for SIMP interpolaion ''' 
@@ -36,20 +36,37 @@ class Parameters:
     ''' Total number of degrees of freedom'''
     tdof=dof_per_node*tnodes
     ''' maximum nuber of iterations'''
-    max_loop=200
+    max_loop=60
     ''' termination criteria'''
     tol =0.001
     '''Force magnitude'''
-    #force = np.array([0, -1, 0])
-    force1 = np.array([0, list([-1,1]), 0],dtype=object) # for two loads in opposite y direction 
+    force = np.array([0, -100, 0])
+
+    '''*********UNCOMMENT THE BELOW LINE "force1" IN CASE OF MULTILOAD**************'''
+    # force1 = np.array([0, list([-1,1]), 0],dtype=object) # for two loads in opposite y direction 
+    
     '''Integration type'''
     integration_type="CompositeGauss4"
+    
+    '''*********************************************************************'''
+    '''THERE ARE FOUR CASES USED HERE '''
+    ''' Rectangle_beam  , Michell_beam , Mid_cantilever ,  multiple__load_case'''
+    ''' IN THE BELOW LINE "geometry_type" JUST REPLACE THE NAME FROM THE ABOVE MENTIONED FOUR CASES '''
+    
+    geometry_type= "Rectangle_beam"
 
-    geometry_type= "multiple__load_case"
-
-    density_cutoff= 0.4
+    density_cutoff= 0.5
+    
     '''multiple load_case'''
     mul_load=0                   # 0 default single load, 2 multiload case
+    
     ''' filter types'''
-    filter=1            # 1 default density filter , 2 for sensitivity filter
-    grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
+    
+    #filter=1            # 1 default density filter , 
+    
+    ''''*********UNCOMMENT THE BELOW LINE "filter" IN CASE OF SENSITIVITY FILTER**************'''
+    #filter=2             #2 for sensitivity filter
+    
+    ''' '*********UNCOMMENT THE BELOW LINE "grey_filter" IN CASE OF GREYSCALE FILTER**************'''
+    #grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
+   

@@ -25,11 +25,6 @@ class SimpOptimizer:
         E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
         
         for loop in tqdm(range(self.params.max_loop)):
-            # update global stiffness using x.globalstiffness()
-            # solve for nodal disp using x.nodaldisp()
-            # complicance
-            # flter
-            # Update densities
 
             if not difference>self.params.tol:
                 break 
@@ -40,10 +35,11 @@ class SimpOptimizer:
             U, Jelem= self.solver.solve(phy_dens) 
             d_Jelem= -p*(E0-Emin)*phy_dens**(p-1)* Jelem
             d_vol=np.ones(self.params.num_elems)
-            ''' use of filtering function to improve the sensitivity analysis  '''
-            
+        
+
             d_Jelem= self.H.dot(d_Jelem/self.HS)
             d_vol= self.H.dot(d_vol/self.HS)
+           
             ''' Optimality criteria update scheme'''
             ##### implementing the bisection algorithm to predict the lambda value ######
             l1=0 
@@ -55,7 +51,9 @@ class SimpOptimizer:
             while (l2-l1)/(l1+l2)>1e-3:
                 lmid=0.5*(l2+l1)
                 new_dens= np.maximum(0.0,np.maximum(dens_backward, np.minimum(1.0,np.minimum(dens_forward, old_dens*sqrt_d_Jelem/np.sqrt(lmid)))))
+                       
                 phy_dens= self.H.dot(new_dens/self.HS)
+                               
                 if np.sum(phy_dens)>self.params.volfrac*self.params.num_elems:
                     l1=lmid
                 else :
