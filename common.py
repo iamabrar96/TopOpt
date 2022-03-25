@@ -88,6 +88,9 @@ class Topology_viz:
         self.step+=1
         ele_tag, _= gmsh.model.mesh.getElementsByType(5)
 
+        if len(filter)==0:
+            raise Exception("There are zero elements that satisfy the density cutoff. Please reduce the cutoff")
+            
         gmsh.view.addModelData(
                 self.t,
                 self.step,

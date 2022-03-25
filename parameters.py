@@ -98,8 +98,8 @@ class Parameters:
     n_dim=3
     nu=0.3
 
-    nelx=60
-    nely=20
+    nelx=30
+    nely=10
     nelz=4
 
     volfrac=0.3                      
@@ -111,14 +111,14 @@ class Parameters:
     max_loop=60
     tol =0.001
 
-    geometry_type= "multiple_load_case"
-    # force = np.array([0, -1, 0])
-    force = np.array([[0, -1, 0],[0, 1, 0]]) #for multi-load case
+    geometry_type= "Rectangle_beam"
+    force = np.array([[0, -1, 0]])
+    # force = np.array([[0, -1, 0],[0, 1, 0]]) #for multiple_load_case
     num_load= len(force)            
     
     integration_type="CompositeGauss4"
-    density_cutoff= 0.5
-    filter=1  
+    density_cutoff= 0.4
+    filter=2 
     
     node_per_ele=8
     dof_per_node=3

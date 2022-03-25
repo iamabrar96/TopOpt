@@ -8,7 +8,10 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
 from scipy.linalg import  cho_factor, LinAlgError
 class FE_solver:
+    ''' Finite Element Solver class '''
+
     def __init__(self, params:Parameters) -> None:
+
         self.params= params
         self.geometry= Rectangle_beam(params)
         self.geometry.geom_automatic()
@@ -18,9 +21,6 @@ class FE_solver:
 
         ################################# Initialisations ################################
         self.integration_points, self.weights= self.helper.gauss_points()
-
-        # self.weights/=2
-        #For now no need for shape functions so omitted here
         _, self.shapefunc_dertv= self.helper.basis_function(self.integration_points)
         self.shapefunc_dertv= self.shapefunc_dertv.reshape(len(self.weights), -1)
 
@@ -81,10 +81,10 @@ class FE_solver:
     
     def init_densities(self):
         '''
-        initialisation of design and physical variables (densities)
+        Initialisation of physical densities
         '''
-
-        self.phy_dens= np.ones(self.params.num_elems)*self.params.volfrac   # physical densities are assigned a constant and unifrom values(initially)
+        # physical densities are assigned a constant and unifrom values(initially)
+        self.phy_dens= np.ones(self.params.num_elems)*self.params.volfrac   
 
     def simp_formula(self):
         '''
@@ -99,7 +99,7 @@ class FE_solver:
 
     def element_stiffness_matrix(self):
         '''
-        obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
+        Obtain individual element stiffeness matrices from Bmat and consitutive matrix functions
         '''
         k_ref= []
         for i in range(len(self.B_mat)):
@@ -111,7 +111,7 @@ class FE_solver:
 
     def globalstiffness_matrix(self):
         '''
-        forming of global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
+        Form global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
         '''
         msimp= self.simp_formula()
         ke2= self.ke.reshape(self.params.num_elems, -1)
@@ -122,13 +122,6 @@ class FE_solver:
 
         self.kg = coo_matrix((vK, (iK, jK)), shape= (self.params.tdof, self.params.tdof)).tocsc()
 
-        # Check for Positive definitedness
-        # try:
-        #     cho_factor(self.kg.toarray())
-        #     print("Stiffness matrix is Symmetric and Positive definite")
-        # except LinAlgError:
-        #     print("Stiffness matrix is not Symmetric and Positive definite")
-
     def nodal_forces(self):
 
         self.F=np.zeros((self.params.tdof, self.params.num_load))
@@ -138,7 +131,7 @@ class FE_solver:
             self.F[forcedof[i], i]= self.params.force[i]
 
     def nodal_displacements(self):
-        """Solving for nodal displacements at free dofs"""
+        '''Solving for nodal displacements at free dofs'''
 
         fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
         freedof= self.helper.free_dof(fixeddof) 
@@ -151,7 +144,7 @@ class FE_solver:
         center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[1]
         nodes_c= np.arange(0,self.params.nelx+1)
         fig,ax=plt.subplots(figsize = (8,6))
-        
+
         for i in range(self.params.num_load):
             ax.plot(nodes_c, self.U[center, i], marker = '*', color = 'blue')
 
@@ -164,17 +157,23 @@ class FE_solver:
         
     def elemental_compliance(self):
         """
-        Compute element compliances
+        Compute element compliance and its derivative
         """
 
         self.Jelem= np.zeros(self.params.num_elems)
         for i in range(self.params.num_elems):
-            for j in range(self.params.num_load):
-                self.Jelem[i]+=(np.dot(np.dot(self.U[self.element_dofs[i], j], self.ke[i]), self.U[self.element_dofs[i], j])) 
+            for j in range(self.params.num_load):   
+                # this order of loops is chosen so that compiler can do optimizations for simd
+                self.Jelem[i]+= np.dot(np.dot(self.U[self.element_dofs[i], j], self.ke[i]), self.U[self.element_dofs[i], j])
+        
+        E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
+        self.d_Jelem= np.zeros(self.params.num_elems)
+        for i in range(self.params.num_load):    
+            self.d_Jelem-= p*(E0-Emin)*self.phy_dens**(p-1)* self.Jelem
 
         #for some reasons not known this vectorized implementation is slower than the iterative one
-        # self.Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
-        # self.Jelem= (self.Jelem * self.U[self.element_dofs]).sum(axis=1)
+        # Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
+        # Jelem= (Jelem * self.U[self.element_dofs]).sum(axis=1)
 
     def prepare_system_of_equations(self):
         self.Bmat()
@@ -187,7 +186,7 @@ class FE_solver:
         solve for nodal displacements and element compliance for given elemental densities 
         returns 
             nodal_displacements 
-            element compliances
+            derivatives of element compliances
         '''
         if new_density is not None:
             self.phy_dens= new_density
@@ -195,7 +194,7 @@ class FE_solver:
         self.globalstiffness_matrix()
         self.nodal_displacements()
         self.elemental_compliance()
-        return self.U ,self.Jelem
+        return self.U, self.d_Jelem
 
 
 if __name__ == '__main__':

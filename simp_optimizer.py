@@ -12,6 +12,7 @@ class SimpOptimizer:
         self.params = params
         self.solver= FE_solver(params)
         self.topology_visualizer= Topology_viz(params)
+
         ################################# Initialisations ################################
         self.density_filter2()
 
@@ -22,7 +23,6 @@ class SimpOptimizer:
         difference=1
 
 
-        E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
         
         for loop in tqdm(range(self.params.max_loop)):
 
@@ -32,17 +32,15 @@ class SimpOptimizer:
             
             ''''minimum compliance objective function and sensitivity analysis'''
             
-            U, Jelem= self.solver.solve(phy_dens) 
-            d_Jelem= -p*(E0-Emin)*phy_dens**(p-1)* Jelem
+            U, d_Jelem= self.solver.solve(phy_dens) 
             d_vol=np.ones(self.params.num_elems)
         
-            '''******* when filter is set to 1 density filter is on ************'''
-            # if filter==1:
-            d_Jelem= self.H.dot(d_Jelem/self.HS)
-            d_vol= self.H.dot(d_vol/self.HS)
-                # '''********** when filter is set to  2 sensitivity filter is on *******'''
-            # elif filter==2:
-            #d_Jelem=(np.dot(self.H ,(np.multiply( old_dens,d_Jelem))))/self.HS/np.maximum(1e-3, old_dens)
+            if self.params.filter==1:   #case: density filter
+                d_Jelem= self.H.dot(d_Jelem/self.HS)
+                d_vol= self.H.dot(d_vol/self.HS)
+            
+            elif self.params.filter==2: #case: sensitivity filter
+                d_Jelem= np.dot(self.H ,old_dens*d_Jelem)/(self.HS*np.maximum(1e-3, old_dens))
                 
            
             ''' Optimality criteria update scheme'''
@@ -56,15 +54,13 @@ class SimpOptimizer:
             while (l2-l1)/(l1+l2)>1e-3:
                 lmid=0.5*(l2+l1)
                 new_dens= np.maximum(0.0,np.maximum(dens_backward, np.minimum(1.0,np.minimum(dens_forward, old_dens*sqrt_d_Jelem/np.sqrt(lmid)))))
-                # '''******* when filter is set to 1 density filter is on ************'''   
-                # if filter==1:
-                phy_dens= self.H.dot(new_dens/self.HS)
                 
-                    # '''********** when filter is set is set 2 sensitivity filter is on *******'''
-                # elif filter==2:
-                #phy_dens=new_dens     
+                if self.params.filter==1:
+                    phy_dens= self.H.dot(new_dens/self.HS)
                 
-                               
+                elif self.params.filter==2:
+                    phy_dens=new_dens     
+                            
                 if np.sum(phy_dens)>self.params.volfrac*self.params.num_elems:
                     l1=lmid
                 else :
