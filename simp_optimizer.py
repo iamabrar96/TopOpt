@@ -73,6 +73,7 @@ class SimpOptimizer:
         return phy_dens
     
     def density_filter2(self):
+        # ToDo add comment here
         ele_tags, _= gmsh.model.mesh.getElementsByType(5)
         centroids = gmsh.model.mesh.getBarycenters(5, -1, False, True).reshape(-1,3)
         self.H= np.zeros((self.params.num_elems, self.params.num_elems))

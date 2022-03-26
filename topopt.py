@@ -141,7 +141,7 @@ class FE_solver:
             self.U[freedof, i]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof, i])
 
     def plot_disp(self):
-        center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[1]
+        center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[0][:,1]
         nodes_c= np.arange(0,self.params.nelx+1)
         fig,ax=plt.subplots(figsize = (8,6))
 

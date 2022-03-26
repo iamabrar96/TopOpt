@@ -87,7 +87,7 @@ class Rectangle_beam:
 
         #boundary nodes come in front like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
         self.centerNodeTags[-1], self.centerNodeTags[-2]= self.centerNodeTags[-2], self.centerNodeTags[-1]
-        self.centerNodeTags[:]= np.roll(self.centerNodeTags[:],1) 
+        self.centerNodeTags= [np.roll(self.centerNodeTags[:],1) ]
 
     def geom_automatic(self): 
         self.create_geometry()

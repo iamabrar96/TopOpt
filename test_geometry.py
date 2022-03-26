@@ -1,10 +1,9 @@
 import numpy as np
-from numpy import linalg,round
+from numpy import round
 from parameters import Parameters
-from geometry import Rectangle_beam
 from topopt import FE_solver
 from scipy.sparse.linalg import eigs
-from scipy.linalg import  cho_factor, LinAlgError
+from scipy.linalg import cho_factor, LinAlgError
 
 def test__stiffness_matrix_singularity():
     '''
@@ -12,7 +11,8 @@ def test__stiffness_matrix_singularity():
 
     Aim : The stiffness matrix has to be positive definite.
     
-    Expected Output : The eigenvalues of the global stiffness matrix should not be negative.
+    Expected Output : The eigenvalues of the global stiffness matrix should not be negative
+                      and cholskey decomposition should be possible.
     
     Remarks : test case passed successfully
     '''
@@ -24,6 +24,7 @@ def test__stiffness_matrix_singularity():
     # Eigen values of the global stiffness matrix are calculated
     eigen_values,eigen_vectors= eigs(solver.kg)
     eigen_values=round(eigen_values,8)
+
     #Check for positive eigen values
     assert (all(eigen_values>=0))
     print("All eigen values are non-negative")

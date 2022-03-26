@@ -111,9 +111,9 @@ class Parameters:
     max_loop=60
     tol =0.001
 
-    geometry_type= "Rectangle_beam"
-    force = np.array([[0, -1, 0]])
-    # force = np.array([[0, -1, 0],[0, 1, 0]]) #for multiple_load_case
+    geometry_type= "multiple_load_case"
+    # force = np.array([[0, -1, 0]])
+    force = np.array([[0, -1, 0],[0, 1, 0]]) #for multiple_load_case
     num_load= len(force)            
     
     integration_type="CompositeGauss4"
