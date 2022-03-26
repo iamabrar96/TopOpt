@@ -64,7 +64,7 @@ class Parameters:
             - Rectangle_beam (default)
             - Michell_beam 
             - Mid_cantilever 
-            - multiple__load_case  
+            - multiple_load_case  
     
     density_cutoff : float
         Minimum density value for elements to be considered in the final topology

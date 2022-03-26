@@ -186,7 +186,7 @@ class FE_solver:
         solve for nodal displacements and element compliance for given elemental densities 
         returns 
             nodal_displacements 
-            derivatives of element compliances
+            element compliance and its derivatives
         '''
         if new_density is not None:
             self.phy_dens= new_density
@@ -194,7 +194,7 @@ class FE_solver:
         self.globalstiffness_matrix()
         self.nodal_displacements()
         self.elemental_compliance()
-        return self.U, self.d_Jelem
+        return self.U, self.Jelem, self.d_Jelem
 
 
 if __name__ == '__main__':

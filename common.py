@@ -70,9 +70,6 @@ class GMSH_helper():
         _, determinants, _=gmsh.model.mesh.getJacobians(elementType=self.element_type,localCoord= integration_points,tag = -1, task = 0, numTasks = 1)
         return determinants
     
-    def get_entities_for_physical_group(self):
-        physical_group=gmsh.model.getPhysicalGroups()
-    
     def finalize(self):
         gmsh.finalize()
     
@@ -90,7 +87,7 @@ class Topology_viz:
 
         if len(filter)==0:
             raise Exception("There are zero elements that satisfy the density cutoff. Please reduce the cutoff")
-            
+
         gmsh.view.addModelData(
                 self.t,
                 self.step,

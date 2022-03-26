@@ -32,7 +32,7 @@ class SimpOptimizer:
             
             ''''minimum compliance objective function and sensitivity analysis'''
             
-            U, d_Jelem= self.solver.solve(phy_dens) 
+            _, Jelem, d_Jelem= self.solver.solve(phy_dens) 
             d_vol=np.ones(self.params.num_elems)
         
             if self.params.filter==1:   #case: density filter
@@ -69,6 +69,7 @@ class SimpOptimizer:
 
             difference=np.max(abs(new_dens-old_dens))
             old_dens=new_dens
+        print(Jelem)
         return phy_dens
     
     def density_filter2(self):
