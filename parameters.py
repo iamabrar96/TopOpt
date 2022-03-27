@@ -7,9 +7,7 @@ class Parameters:
     Parameters necessary for running the simulation.
     Attributes
     ----------
-
-
-
+    
     n_dim : int
         number of dimension of the problem
         Default: 3
