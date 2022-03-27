@@ -130,7 +130,7 @@ class Parameters:
 
     nelx=30
     nely=10
-    nelz=2
+    nelz=3
 
     volfrac=0.3                      
     p=3           
@@ -141,23 +141,36 @@ class Parameters:
     max_loop=60
     tol =0.001
 
-    geometry_type= "Rectangle_beam"
-    force = np.array([[0, -1, 0]])              #for Rectangle_beam
-    # force = np.array([[0, -1, 0],[0, 1, 0]])  #for multiple_load_case
-    num_load= len(force)            
+    geometry_type= "multiple_load_case"
+    # force = np.array([[0, -1, 0]])            #for Rectangle_beam
+    force = np.array([[0, -1, 0],[0, 1, 0]])    #for multiple_load_case
+    disp = np.array([[0,0,0]])                  #displacement boundary
+
+    @property
+    def num_load(self):
+        return len(self.force)            
     
     integration_type="CompositeGauss4"
     density_cutoff= 0.4
     filter=2 
     
     node_per_ele=8
-    dof_per_node=3
+    dof_per_node= n_dim
     dof_per_ele= node_per_ele*dof_per_node  
     
-    num_elems=nelx*nely*nelz  
-    tnodes=(nelx+1)*(nely+1)*(nelz+1)
-    tdof=dof_per_node*tnodes 
+    @property
+    def num_elems(self):
+        return self.nelx*self.nely*self.nelz
 
+    @property
+    def tnodes(self):
+        return (self.nelx+1)*(self.nely+1)*(self.nelz+1)
+    
+    @property
+    def tdof(self):
+        return self.dof_per_node*self.tnodes 
+
+<<<<<<< HEAD
     n_dim = 3
     out_dim =1
     epochs = 50
@@ -170,6 +183,11 @@ class Parameters:
     weight_decay= 0.001
     I= (nelz* nely**3)/12
 
+=======
+    @property
+    def I(self):
+        return (self.nelz* self.nely**3)/12    
+>>>>>>> ee8f0e99d8e9730ae5dc1d5af93c11dfdd58c541
 
     c2= np.array(  [1.0, 18.45074218, 12.28496332, 10.18983032,  9.20225366,  8.67839379,
                     8.37293717,  8.18218208,  8.05635729,  7.96962493,  7.90764666,  7.86201934,

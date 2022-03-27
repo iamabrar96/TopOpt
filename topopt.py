@@ -127,20 +127,34 @@ class FE_solver:
 
         self.F=np.zeros((self.params.tdof, self.params.num_load))
 
-        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags)
-        for i in range(self.params.num_load):
-            self.F[forcedof[i], i]= self.params.force[i]
+        if len(self.forcedof)==0:    #if no force is applied
+            return
 
+        for i in range(self.params.num_load):
+            self.F[self.forcedof[i], i]= self.params.force[i]
+    
     def nodal_displacements(self):
+        self.U=np.zeros((self.params.tdof, self.params.num_load))
+        
+        if len(self.fixeddof)==0:    #if no displacement constraint
+            return
+        
+        for i in range(self.params.num_load):    
+            self.U[self.fixeddof, i]= self.params.disp.reshape(-1)
+
+    def nodal_displacements_at_freedof(self):
         '''Solving for nodal displacements at free dofs'''
 
-        fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
-        freedof= self.helper.free_dof(fixeddof) 
-
-        self.U=np.zeros((self.params.tdof, self.params.num_load))
         for i in range(self.params.num_load):
-            self.U[freedof, i]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof, i])
+            self.U[self.freedof, i]= spsolve(self.kg[self.freedof,:][:,self.freedof], self.F[self.freedof, i])
+    
+    def reaction_forces_at_fixeddof(self):
+        '''Solving for reaction forces'''
 
+        fixeddof= self.fixeddof.flatten()
+        for i in range(self.params.num_load):
+            self.F[fixeddof, i]= self.kg[fixeddof, :][:, fixeddof].dot(self.U[fixeddof, i]) 
+        
     def plot_disp(self):
         center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[0][:,1]
         nodes_c= np.arange(0,self.params.nelx+1)
@@ -175,12 +189,23 @@ class FE_solver:
         #for some reasons not known this vectorized implementation is slower than the iterative one
         # Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
         # Jelem= (Jelem * self.U[self.element_dofs]).sum(axis=1)
+    
+    def initialize_dofs(self):
+        self.forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags)
+
+        self.fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
+        self.fixeddof= np.vstack(self.fixeddof)
+        self.fixeddof= np.unique(self.fixeddof, axis=0)
+
+        self.freedof= self.helper.free_dof(self.fixeddof) 
 
     def prepare_system_of_equations(self):
         self.Bmat()
         self.constitutive_matrix()
         self.element_stiffness_matrix()
+        self.initialize_dofs()
         self.nodal_forces()
+        self.nodal_displacements()
 
     def solve(self, new_density= None):
         '''
@@ -193,7 +218,8 @@ class FE_solver:
             self.phy_dens= new_density
 
         self.globalstiffness_matrix()
-        self.nodal_displacements()
+        self.nodal_displacements_at_freedof()
+        self.reaction_forces_at_fixeddof()
         self.elemental_compliance()
         return self.U, self.Jelem, self.d_Jelem
 
