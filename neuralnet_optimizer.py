@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import parameters
+import common
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -10,32 +11,24 @@ from sklearn.preprocessing import MinMaxScaler
 class Dataset():
     def __init__(self):
         super(Dataset,self).__init__()
-
         # read and define inputs
         self.data_name=pd.read_csv('Experiments_1_without_Error_Term.csv', sep=';', decimal=',') # small dataset
         #self.data_name=pd.read_csv('Experiments_1_without_Error_Term_2.csv', sep=';', decimal=',') # large dataset
         self.x = self.data_name[['F_press','fs','h_BT']].values
-        
         # normilize inputs between -1 and 1
-        scaler_x = MinMaxScaler(feature_range=(-1,1))
+        scaler_x = MinMaxScaler(feature_range=(0,1))
         self.x = scaler_x.fit_transform(self.x)
         self.x = torch.tensor(self.x, dtype=torch.float64)
-        
         print(f'size input: {self.x.size()}, min input: {self.x.min()}, max input: {self.x.max()}')
-
-        
         # read and define outputs
         disp_all = np.load("disp_all_81000001.npy") # small dataset
         #disp_all = np.load("disp_all_81000001_2.npy") # large dataset
         self.y = np.reshape(disp_all, (disp_all.shape[0],-1))
-        
         # normalize displacement results between -1 and 1
-        scaler_y = MinMaxScaler(feature_range=(-1,1))
+        scaler_y = MinMaxScaler(feature_range=(0,1))
         self.y = scaler_y.fit_transform(self.y)
         self.y = torch.tensor(self.y, dtype=torch.float64)        
-        
         print(f'size output: {self.y.size()}, min output: {self.y.min()}, max output: {self.y.max()}')   
-
         self.n_samples = self.x.shape[0]
         print('size dataset:', self.n_samples)
         
@@ -70,16 +63,12 @@ def train(model, train_loader, val_loader, optimizer, epochs, device, criterion)
         batch_loss = []
         for i,(x,y) in enumerate(train_loader):
             optimizer.zero_grad()
-
             x = x.to(device)
             y = y.to(device)
             yhat = model(x.float())
-
             loss = criterion(y,yhat)
-
             loss.backward()
             optimizer.step()
-
             batch_loss.append(torch.log10(loss).item())
 
             if (i+1) % 1 == 0:
@@ -90,21 +79,15 @@ def train(model, train_loader, val_loader, optimizer, epochs, device, criterion)
         with torch.no_grad():
             model.eval()
             batch_loss = []
-            
             for x,y in val_loader:
-                
                 x = x.to(device)
                 y = y.to(device)
                 yhat = model(x.float())
-                
                 loss = criterion(y,yhat)
-                
                 batch_loss.append(torch.log10(loss).item())
-                
             valid_loss.append(torch.Tensor(batch_loss).mean().item()) 
         print(f'Epoch [{epoch+1}/{epochs}], Train-Loss: {train_loss[epoch]:.4f}, Valid-Loss: {valid_loss[epoch]:.4f}')
     return train_loss, valid_loss
-
 
 
 def device_common():
@@ -112,11 +95,9 @@ def device_common():
         device = torch.device("cuda:0")
         print('device is assigned as CUDA')
         torch.cuda.empty_cache()
-
     else:
         device = torch.device("cpu")   
         print('device is assigned as CPU')
-    
     torch.cuda.device_count()
     return device
 
@@ -142,7 +123,6 @@ class Model(nn.Module):
         L=len(self.hidden)
         for(l,linear_transform) in zip(range(L),self.hidden):
             if l<L-1:
-            
                 x = linear_transform(x)
                 x=torch.relu(self.norm(x))
                 x=self.drop(x)
@@ -150,12 +130,10 @@ class Model(nn.Module):
                 x= linear_transform(x)
         return x
 
-
 def loss_top():
     loss = torch.sum(torch.div(Jelem,nn_rho**penal))/obj0; # compliance
     volConstraint =((torch.mean(nn_rho)/desiredVolumeFraction) - 1.0);
     return loss, volConstraint
-
 
 #initialisation of parameters
 seed_list = np.array([9,89,232,5688,87843,216848,9867985,65468935,135878968,9999999999])
