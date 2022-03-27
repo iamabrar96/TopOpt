@@ -27,10 +27,6 @@ def test__rigid_body_translation():
     solver.reaction_forces_at_fixeddof()
     solver.nodal_displacements_at_freedof()
     U= solver.U
-    solver.F= solver.F.reshape(-1,3)[0]
-    print(F)
-    for i in range(params.num_load):
-        U[:, i]= spsolve(solver.kg, F[:, i])
     
     print(solver.U)
 if __name__ == '__main__':

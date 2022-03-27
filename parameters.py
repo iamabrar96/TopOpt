@@ -141,9 +141,9 @@ class Parameters:
     max_loop=60
     tol =0.001
 
-    geometry_type= "multiple_load_case"
-    # force = np.array([[0, -1, 0]])            #for Rectangle_beam
-    force = np.array([[0, -1, 0],[0, 1, 0]])    #for multiple_load_case
+    geometry_type= "Rectangle_beam"
+    force = np.array([[0, -1, 0]])            #for Rectangle_beam
+    # force = np.array([[0, -1, 0],[0, 1, 0]])    #for multiple_load_case
     disp = np.array([[0,0,0]])                  #displacement boundary
 
     @property
@@ -161,7 +161,7 @@ class Parameters:
     num_hidden_layer = 3
     seed_item = 9867985
     dropout = 0.20
-    lrfder = 0.01
+    lr = 0.01
     alphaIncrement = 0.05
     weight_decay= 0.001
 
