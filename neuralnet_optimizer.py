@@ -128,36 +128,28 @@ class Model(nn.Module):
                 x= linear_transform(x)
         return x
 
-def loss_top():
+def loss_top(y, yhat):
     loss = torch.sum(torch.div(Jelem,nn_rho**penal))/obj0; # compliance
     volConstraint =((torch.mean(nn_rho)/desiredVolumeFraction) - 1.0);
     return loss, volConstraint
 
-#initialisation of parameters
-seed_list = np.array([9,89,232,5688,87843,216848,9867985,65468935,135878968,9999999999])
-epochs = 30
-in_size = parameters.n_dim
-outsize = parameters.out_dim
-size_hidden = 520
 
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
     
-for j, h in enumerate(range(1,8)):
-    for k,seed in enumerate(seed_list):
-        torch.manual_seed(seed)
-        print("\n hidden layer = {} seed = {}" .format(h,seed))
-        MSE = nn.MSELoss()
-        model = My_Model(in_size, n_hidden, size_hidden, outsize,  p=0.30).to(device)
-        lrfder = 0.00609 #lrfinder(model)
-        optimizer = optim.RMSprop(model.parameters(), lr=lrfder, weight_decay= 1e-3)
-        total_loss= train(model, train_loader, val_loader, optimizer,epochs)
-        for training_loss,validation_loss in zip(total_loss['training_loss'],total_loss['validation_loss']):
-            print('training_loss:{:.2f},     validation_loss:{:.2f}'.format(training_loss,validation_loss))
-        r2_score[j,k] = r2score(model)
-        torch.save(model.state_dict(), '/media/sneha/E0DCBE20DCBDF140/Users/sneha/Downloads/files/Hemispherical/Model properties/model_{}_{}.ckpt'.format(h,seed))
-        del model
-        torch.cuda.empty_cache()
+torch.manual_seed(params.seed_item)
+MSE = loss_top(y, yhat)
+model = My_Model(parameters : params).to(device)
+lrfder = 0.00609 #lrfinder(model)
+optimizer = getattr(torch.optim, optimizer_name)(model.parameters(), lr=lrfder, weight_decay= 1e-3)
+
+total_loss= train(model, train_loader, val_loader, optimizer,epochs)
+for training_loss,validation_loss in zip(total_loss['training_loss'],total_loss['validation_loss']):
+    print('training_loss:{:.2f},     validation_loss:{:.2f}'.format(training_loss,validation_loss))
+r2_score[j,k] = r2score(model)
+torch.save(model.state_dict(), '/media/sneha/E0DCBE20DCBDF140/Users/sneha/Downloads/files/Hemispherical/Model properties/model_{}_{}.ckpt'.format(h,seed))
+del model
+torch.cuda.empty_cache()
 
 torch.cuda.synchronize()
 print("time taken to run this program is {:0.4f} seconds" .format(start.elapsed_time(end)))

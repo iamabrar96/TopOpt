@@ -8,12 +8,7 @@ class Parameters:
     Attributes
     ----------
     
-    n_dim : int
-        number of dimension of the problem
-        Default: 3
-    n_out : int
-        number of dimension of the output: density function
-        Default: 1
+
     nu : float
         poison ratio
         Default : 0.3
@@ -95,10 +90,26 @@ class Parameters:
         Total number of nodes      
     tdof : int
         Total number of degrees of freedom
+
+    n_dim : int
+        number of dimension of the problem
+        Default: 3
+    n_out : int
+        number of dimension of the output: density function
+        Default: 1
+    epoch : int
+        number of epochs for the model to run
+        Default: 50
+    size_hidden : int
+        size of the hidden layer
+        Default: 500
+    num_hidden_layer : int
+        number of hidden layer in the neural network
+        Default: 3
+    seed_item: int
+        initialisation for manual seeds for reproducable results
     """
 
-    n_dim=3
-    out_dim=1
     nu=0.3
 
     nelx=30
@@ -131,6 +142,14 @@ class Parameters:
     tnodes=(nelx+1)*(nely+1)*(nelz+1)
     tdof=dof_per_node*tnodes 
 
+    n_dim = 3
+    out_dim =1
+    epoch = 50
+    size_hidden = 500
+    num_hidden_layer = 3
+    seed_item = 9867985
+    optimizer_name = 'Adam'
+    dropout = 0.20
     I= (nelz* nely**3)/12    
 
     c2= np.array(  [1.0, 18.45074218, 12.28496332, 10.18983032,  9.20225366,  8.67839379,
