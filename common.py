@@ -2,6 +2,7 @@ from platform import node
 import gmsh
 from matplotlib.pyplot import axis
 import numpy as np
+import torch
 
 from parameters import Parameters
 class GMSH_helper():
@@ -103,3 +104,15 @@ class Topology_viz:
         gmsh.option.setNumber('Mesh.VolumeEdges',0)
 
         gmsh.fltk.run()
+
+def device_common():
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        print('device is assigned as CUDA')
+        torch.cuda.empty_cache()
+
+    else:
+        device = torch.device("cpu")   
+        print('device is assigned as CPU')
+        
+    return device
