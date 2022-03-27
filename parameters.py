@@ -154,6 +154,17 @@ class Parameters:
     density_cutoff= 0.4
     filter=2 
     
+    n_dim = 3
+    out_dim =1
+    epochs = 50
+    size_hidden = 500
+    num_hidden_layer = 3
+    seed_item = 9867985
+    dropout = 0.20
+    lrfder = 0.01
+    alphaIncrement = 0.05
+    weight_decay= 0.001
+
     node_per_ele=8
     dof_per_node= n_dim
     dof_per_ele= node_per_ele*dof_per_node  
@@ -170,24 +181,9 @@ class Parameters:
     def tdof(self):
         return self.dof_per_node*self.tnodes 
 
-<<<<<<< HEAD
-    n_dim = 3
-    out_dim =1
-    epochs = 50
-    size_hidden = 500
-    num_hidden_layer = 3
-    seed_item = 9867985
-    dropout = 0.20
-    lrfder = 0.01
-    alphaIncrement = 0.05
-    weight_decay= 0.001
-    I= (nelz* nely**3)/12
-
-=======
     @property
     def I(self):
         return (self.nelz* self.nely**3)/12    
->>>>>>> ee8f0e99d8e9730ae5dc1d5af93c11dfdd58c541
 
     c2= np.array(  [1.0, 18.45074218, 12.28496332, 10.18983032,  9.20225366,  8.67839379,
                     8.37293717,  8.18218208,  8.05635729,  7.96962493,  7.90764666,  7.86201934,
