@@ -20,8 +20,9 @@ class SimpOptimizer:
         old_dens= phy_dens
         difference=1
 
+        self.compliances = []
+        msimp= self.solver.simp_formula()
 
-        
         for loop in tqdm(range(self.params.max_loop)):
 
             if not difference>self.params.tol:
@@ -31,8 +32,10 @@ class SimpOptimizer:
             ''''minimum compliance objective function and sensitivity analysis'''
             
             _, Jelem, d_Jelem= self.solver.solve(phy_dens) 
+            self.compliances.append(Jelem.dot(msimp))
+            
             d_vol=np.ones(self.params.num_elems)
-        
+
             if self.params.filter==1:   #case: density filter
                 d_Jelem= self.H.dot(d_Jelem/self.HS)
                 d_vol= self.H.dot(d_vol/self.HS)

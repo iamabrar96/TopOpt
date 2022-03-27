@@ -108,6 +108,22 @@ class Parameters:
         Default: 3
     seed_item: int
         initialisation for manual seeds for reproducable results
+    optimizer_name: string
+        gives the optimizer name
+        default: Adam
+    dropout: percentage float
+        assigns the dropout of neurons
+        default: 0.20
+    lrfder: float
+        initialises the learning rate to a certain value
+        default: 0.01
+    alphaIncrement: float
+        initialise the alpha value
+        default: 0.05
+    weight_decay: float
+        initialises the weight decay
+        default: 1e-3
+
     """
 
     nu=0.3
@@ -144,17 +160,20 @@ class Parameters:
 
     n_dim = 3
     out_dim =1
-    epoch = 50
+    epochs = 50
     size_hidden = 500
     num_hidden_layer = 3
     seed_item = 9867985
-    optimizer_name = 'Adam'
     dropout = 0.20
-    I= (nelz* nely**3)/12    
+    lrfder = 0.01
+    alphaIncrement = 0.05
+    weight_decay= 0.001
+    I= (nelz* nely**3)/12
+
 
     c2= np.array(  [1.0, 18.45074218, 12.28496332, 10.18983032,  9.20225366,  8.67839379,
                     8.37293717,  8.18218208,  8.05635729,  7.96962493,  7.90764666,  7.86201934,
                     7.82757955,  7.80102058,  7.78014569 , 7.76344685 , 7.74985785,  7.73860515,
                     7.7291165,  7.720966,    7.71384449,  7.70755057,  7.7020022 ,  7.69727332,
                     7.69367585,  7.691901,    7.693454,    7.70106127,  7.72390748,  7.77382679,
-                    8.01467146]) 
+                    8.01467146])
