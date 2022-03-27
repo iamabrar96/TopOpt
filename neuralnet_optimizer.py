@@ -1,31 +1,109 @@
-import os
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-import torchvision 
-from torch.nn import Linear
-from torch import optim
-import pandas as pd
-import numpy as np
-from torch.utils.data.dataloader import DataLoader
-from torch.utils.data import random_split
-import matplotlib.pyplot as plt
-from torchvision.transforms import ToTensor
-from torch.utils.data.dataloader import DataLoader
-from torch.utils.data import random_split
-from mpl_toolkits import mplot3d
-torch.set_printoptions(threshold=50,edgeitems=300,linewidth=100)
-import math
-import statistics 
-import optuna
-import plotly
-torch.set_default_dtype(torch.float64)
-import torchvision.transforms
-torch.cuda.empty_cache()
-import jovian
+import parameters
 
-start = torch.cuda.Event(enable_timing=True)
-end = torch.cuda.Event(enable_timing=True)
-start.record() 
+from sklearn.preprocessing import MinMaxScaler
+
+
+class Dataset():
+    def __init__(self):
+        super(Dataset,self).__init__()
+
+        # read and define inputs
+        self.data_name=pd.read_csv('Experiments_1_without_Error_Term.csv', sep=';', decimal=',') # small dataset
+        #self.data_name=pd.read_csv('Experiments_1_without_Error_Term_2.csv', sep=';', decimal=',') # large dataset
+        self.x = self.data_name[['F_press','fs','h_BT']].values
+        
+        # normilize inputs between -1 and 1
+        scaler_x = MinMaxScaler(feature_range=(-1,1))
+        self.x = scaler_x.fit_transform(self.x)
+        self.x = torch.tensor(self.x, dtype=torch.float64)
+        
+        print(f'size input: {self.x.size()}, min input: {self.x.min()}, max input: {self.x.max()}')
+
+        
+        # read and define outputs
+        disp_all = np.load("disp_all_81000001.npy") # small dataset
+        #disp_all = np.load("disp_all_81000001_2.npy") # large dataset
+        self.y = np.reshape(disp_all, (disp_all.shape[0],-1))
+        
+        # normalize displacement results between -1 and 1
+        scaler_y = MinMaxScaler(feature_range=(-1,1))
+        self.y = scaler_y.fit_transform(self.y)
+        self.y = torch.tensor(self.y, dtype=torch.float64)        
+        
+        print(f'size output: {self.y.size()}, min output: {self.y.min()}, max output: {self.y.max()}')   
+
+        self.n_samples = self.x.shape[0]
+        print('size dataset:', self.n_samples)
+        
+    def __getitem__(self, index):
+        return self.x[index],self.y[index]  
+    
+    def __len__(self):
+        return self.n_samples
+
+# class Model(nn.Module):
+#     def __init__(self, in_size, s, outsize):
+#         super(Model,self). __init__()
+
+#         self.l1 = nn.Linear(in_size, s, bias=True)
+#         self.relu = nn.ReLU()
+#         self.l2 = nn.Linear(s, outsize, bias=True)
+
+#     def forward(self, x):
+#         out = self.l1(x)
+#         out = self.relu(out)
+#         out = self.l2(out)
+#         return out
+
+def train(model, train_loader, val_loader, optimizer, epochs, device, criterion):
+    model.to(device)
+    train_loss = []
+    valid_loss = []
+    n_total_steps = len(train_loader)
+    
+    for epoch in range(epochs):
+        model.train()
+        batch_loss = []
+        for i,(x,y) in enumerate(train_loader):
+            optimizer.zero_grad()
+
+            x = x.to(device)
+            y = y.to(device)
+            yhat = model(x.float())
+
+            loss = criterion(y,yhat)
+
+            loss.backward()
+            optimizer.step()
+
+            batch_loss.append(torch.log10(loss).item())
+
+            if (i+1) % 1 == 0:
+                print (f'Epoch [{epoch+1}/{epochs}], Step [{i+1}/{n_total_steps}], Train-Step-Loss: {torch.log10(loss.item()):.4f}')
+
+        train_loss.append(torch.Tensor(batch_loss).mean().item())
+
+        with torch.no_grad():
+            model.eval()
+            batch_loss = []
+            
+            for x,y in val_loader:
+                
+                x = x.to(device)
+                y = y.to(device)
+                yhat = model(x.float())
+                
+                loss = criterion(y,yhat)
+                
+                batch_loss.append(torch.log10(loss).item())
+                
+            valid_loss.append(torch.Tensor(batch_loss).mean().item()) 
+        print(f'Epoch [{epoch+1}/{epochs}], Train-Loss: {train_loss[epoch]:.4f}, Valid-Loss: {valid_loss[epoch]:.4f}')
+    return train_loss, valid_loss
 
 
 
@@ -44,66 +122,33 @@ def device_common():
 
 random.seed(manualSeed)
 
-class My_Model(nn.Module):
-    def __init__(self, in_size, h,s,outsize, p=0):
+class Model(nn.Module):
+    def __init__(self, in_size, n_hidden,size_hidden,outsize, p=0):
         
         super(My_Model,self). __init__()
         self.in_size = in_size
         self.outsize = outsize
-        self.h = h
-        self.s = s
+        self.n_hidden = n_hidden
+        self.size_hidden = size_hideen
         self.hidden=nn.ModuleList()
         self.drop=nn.Dropout(p=p)
-        self.Layers = [in_size, *[self.s for i in range(h)], outsize]
+        self.Layers = [in_size, *[self.size_hidden for i in range(n_hidden)], outsize]
         print(self.Layers)
         self.norm = nn.BatchNorm1d(s)
         for input_size,output_size in zip(self.Layers, self.Layers[1:]):
             self.hidden.append(nn.Linear(input_size, output_size, bias=False))
             
-    def forward(self, activation):
+    def forward(self, x):
         L=len(self.hidden)
         for(l,linear_transform) in zip(range(L),self.hidden):
             if l<L-1:
             
-                activation = linear_transform(activation)
-                activation=torch.relu(self.norm(activation))
-                activation=self.drop(activation)
+                x = linear_transform(x)
+                x=torch.relu(self.norm(x))
+                x=self.drop(x)
             else:
-                activation= linear_transform(activation)
-        return activation
-
-
-
-def train(model,train_loader, val_loader, optimizer, epochs):
-    model.to(device)
-    total_loss = {'training_loss':[],'validation_loss':[]}
-    for epoch in range(epochs):
-        batch_loss=[]
-        for i,(x,y) in enumerate(train_loader):
-            x = x.to(device)
-            y = y.to(device)
-            yhat = model(x)
-            loss = MSE(y,yhat)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            batch_loss.append(torch.sqrt(loss).item())
-        total_loss['training_loss'].append(torch.Tensor(batch_loss).mean().item())
-#         print(total_loss['training_loss'])
-  
-        with torch.no_grad():
-            model.eval()
-            batch_loss=[]        
-            for x,y in val_loader:
-                x = x.to(device)
-                y = y.to(device)
-                yhat = model(x)
-                loss = MSE(y,yhat)
-                batch_loss.append(torch.sqrt(loss).item())
-            total_loss['validation_loss'].append(torch.Tensor(batch_loss).mean().item()) 
-#             print(total_loss['validation_loss'])
-
-    return total_loss
+                x= linear_transform(x)
+        return x
 
 
 def loss_top():
@@ -112,14 +157,12 @@ def loss_top():
     return loss, volConstraint
 
 
-
-
 #initialisation of parameters
 seed_list = np.array([9,89,232,5688,87843,216848,9867985,65468935,135878968,9999999999])
 epochs = 30
-in_size = 3 
-outsize = 14943
-s = 520
+in_size = parameters.n_dim
+outsize = parameters.out_dim
+size_hidden = 520
 
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
@@ -129,7 +172,7 @@ for j, h in enumerate(range(1,8)):
         torch.manual_seed(seed)
         print("\n hidden layer = {} seed = {}" .format(h,seed))
         MSE = nn.MSELoss()
-        model = My_Model(in_size, h,s,outsize,  p=0.30).to(device)
+        model = My_Model(in_size, n_hidden, size_hidden, outsize,  p=0.30).to(device)
         lrfder = 0.00609 #lrfinder(model)
         optimizer = optim.RMSprop(model.parameters(), lr=lrfder, weight_decay= 1e-3)
         total_loss= train(model, train_loader, val_loader, optimizer,epochs)
