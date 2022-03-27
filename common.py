@@ -45,11 +45,11 @@ class GMSH_helper():
         offset= np.tile(np.arange(self.params.n_dim, dtype='int'), self.params.node_per_ele)  #[0,1,2, 0,1,2, 0,1,...]
         element_dofs= np.repeat(self.params.n_dim * nodetags, self.params.n_dim, axis=1) + offset  #[3*nodetag, 3*nodetag+1, 3*nodetag+2 ...]
         coord= coord.reshape(self.params.num_elems, -1)
-        centroids=[]
-        for j in range(self.params.num_elems):
-            centroids.append((np.sum(coord[j].reshape(-1,3),axis=0)/self.params.node_per_ele))
-        centroids=np.vstack(centroids)
-        return nodetags, element_dofs, centroids
+
+        return nodetags, element_dofs
+    
+    def get_element_centers(self):
+        return gmsh.model.mesh.getBarycenters(5,-1, False, True).reshape(-1,3)
     
     def gauss_points(self):
         '''

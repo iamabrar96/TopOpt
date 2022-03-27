@@ -83,11 +83,17 @@ class Rectangle_beam:
 
     
     def add_center(self):
-        self.centerNodeTags= gmsh.model.mesh.getNodes(1, 9, includeBoundary=True)[0].astype('int')
+        '''
+        Gets tags of the nodes in the center of the beam including the boundary nodes
+        in the order that they appear from left boundary to the right
+        '''
 
+        self.centerNodeTags = gmsh.model.mesh.getNodes(1, 9, includeBoundary=True)[0].astype('int')
         #boundary nodes come in front like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
         self.centerNodeTags[-1], self.centerNodeTags[-2]= self.centerNodeTags[-2], self.centerNodeTags[-1]
-        self.centerNodeTags= [np.roll(self.centerNodeTags[:],1) ]
+        self.centerNodeTags= [ np.roll(self.centerNodeTags[:],1) ]
+
+
 
     def geom_automatic(self): 
         self.create_geometry()

@@ -1,11 +1,9 @@
 import math
 import numpy as np
 from common import Topology_viz
-from geometry import Rectangle_beam
 from parameters import Parameters
 from topopt import FE_solver
 from scipy.sparse import coo_matrix
-import gmsh
 from tqdm import tqdm
 class SimpOptimizer:
     def __init__(self, params:Parameters) -> None:
@@ -74,13 +72,11 @@ class SimpOptimizer:
     
     def density_filter2(self):
         # ToDo add comment here
-        ele_tags, _= gmsh.model.mesh.getElementsByType(5)
-        centroids = gmsh.model.mesh.getBarycenters(5, -1, False, True).reshape(-1,3)
+        centroids = self.solver.helper.get_element_centers()
         self.H= np.zeros((self.params.num_elems, self.params.num_elems))
         self.HS= np.empty(self.params.num_elems)
 
         for i in range(self.params.num_elems-1):
-            curr_elem = ele_tags[i]
             curr_centroid = centroids[i]
             dist= np.linalg.norm(curr_centroid - centroids[i+1 :], axis=1)
             j= np.where(dist< self.params.rmin)[0]

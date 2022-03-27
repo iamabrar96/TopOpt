@@ -103,7 +103,7 @@ class Parameters:
 
     nelx=30
     nely=10
-    nelz=4
+    nelz=2
 
     volfrac=0.3                      
     p=3           
@@ -114,9 +114,9 @@ class Parameters:
     max_loop=60
     tol =0.001
 
-    geometry_type= "multiple_load_case"
-    # force = np.array([[0, -1, 0]])
-    force = np.array([[0, -1, 0],[0, 1, 0]]) #for multiple_load_case
+    geometry_type= "Rectangle_beam"
+    force = np.array([[0, -1, 0]])              #for Rectangle_beam
+    # force = np.array([[0, -1, 0],[0, 1, 0]])  #for multiple_load_case
     num_load= len(force)            
     
     integration_type="CompositeGauss4"
@@ -129,4 +129,13 @@ class Parameters:
     
     num_elems=nelx*nely*nelz  
     tnodes=(nelx+1)*(nely+1)*(nelz+1)
-    tdof=dof_per_node*tnodes      
+    tdof=dof_per_node*tnodes 
+
+    I= (nelz* nely**3)/12    
+
+    c2= np.array(  [1.0, 18.45074218, 12.28496332, 10.18983032,  9.20225366,  8.67839379,
+                    8.37293717,  8.18218208,  8.05635729,  7.96962493,  7.90764666,  7.86201934,
+                    7.82757955,  7.80102058,  7.78014569 , 7.76344685 , 7.74985785,  7.73860515,
+                    7.7291165,  7.720966,    7.71384449,  7.70755057,  7.7020022 ,  7.69727332,
+                    7.69367585,  7.691901,    7.693454,    7.70106127,  7.72390748,  7.77382679,
+                    8.01467146]) 

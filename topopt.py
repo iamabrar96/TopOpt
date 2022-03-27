@@ -27,8 +27,9 @@ class FE_solver:
         self.determinants= self.helper.Jacob(self.integration_points)
         self.determinants= self.determinants.reshape(-1, len(self.weights))
 
-        self.nodetags, self.element_dofs, self.centroids= self.helper.element_nodes()
+        self.nodetags, self.element_dofs= self.helper.element_nodes()
         
+        #Intitialize elemental densities and setup the system of equations
         self.init_densities()
         self.prepare_system_of_equations()
 
