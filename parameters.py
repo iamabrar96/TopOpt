@@ -11,6 +11,8 @@ class Parameters:
     dof_per_ele= node_per_ele*dof_per_node
     ''' number of dimension of the problem'''
     n_dim=3
+    ''' number of dimension of the output: density function'''
+    out_dim=1
     ''' poison ratio '''
     nu=0.3
     ''' number of element in x direction'''
