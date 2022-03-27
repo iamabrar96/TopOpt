@@ -13,16 +13,14 @@ class Dataset():
         super(Dataset,self).__init__()
         # read and define inputs
         self.data_name=pd.read_csv('Experiments_1_without_Error_Term.csv', sep=';', decimal=',') # small dataset
-        #self.data_name=pd.read_csv('Experiments_1_without_Error_Term_2.csv', sep=';', decimal=',') # large dataset
         self.x = self.data_name[['F_press','fs','h_BT']].values
-        # normilize inputs between -1 and 1
+        # normilize inputs between 0 and 1
         scaler_x = MinMaxScaler(feature_range=(0,1))
         self.x = scaler_x.fit_transform(self.x)
         self.x = torch.tensor(self.x, dtype=torch.float64)
         print(f'size input: {self.x.size()}, min input: {self.x.min()}, max input: {self.x.max()}')
         # read and define outputs
         disp_all = np.load("disp_all_81000001.npy") # small dataset
-        #disp_all = np.load("disp_all_81000001_2.npy") # large dataset
         self.y = np.reshape(disp_all, (disp_all.shape[0],-1))
         # normalize displacement results between -1 and 1
         scaler_y = MinMaxScaler(feature_range=(0,1))
