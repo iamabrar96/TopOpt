@@ -62,8 +62,7 @@ def test__comparision_with_analytical_soln():
 
     # indicate some absolute tolerance
     params.tol= 1e-3
-    print(U_exact[1])
-    print(U_num[1])
+
     error= np.abs(U_exact[1]*8 -U_num[1]).mean()    #compare y-components of displacements
     assert error<params.tol
 

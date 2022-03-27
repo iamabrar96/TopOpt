@@ -22,11 +22,9 @@ class NN_Optimizer:
         self.criterion= loss_fn
     def train(self):
         train_loss = []
-        valid_loss = []
 
         for epoch in range(epochs):
             model.train()
-            batch_loss = []
 
             optimizer.zero_grad()
 

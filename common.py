@@ -19,9 +19,9 @@ class GMSH_helper():
 
     def free_dof(self, fixeddof):
         'Elimination approach'
-        fixeddof= np.array(fixeddof)
+
         dof=np.arange(0,self.params.tdof)
-        freedof= np.setdiff1d(dof, fixeddof.reshape(-1))   
+        freedof= np.setdiff1d(dof, fixeddof)   
         return freedof
 
     @property
@@ -114,5 +114,5 @@ def device_common():
     else:
         device = torch.device("cpu")   
         print('device is assigned as CPU')
-        
+
     return device

@@ -14,7 +14,11 @@ class Rectangle_beam:
         elif params.geometry_type == "Mid_cantilever":
             geom = super(Rectangle_beam, Mid_cantilever).__new__(Mid_cantilever)
         else:
-            raise Exception("Invalid geometry type selected")
+            try:
+                geom = super(Rectangle_beam, params.geometry_type).__new__(params.geometry_type)
+
+            except TypeError:
+                raise Exception("Invalid geometry type selected")
 
         return geom
 
@@ -157,10 +161,11 @@ class multiple_load_case(Rectangle_beam):
         """
         self.fixedNodeTags= [np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0].astype('int'))]
 
+
 if __name__ == '__main__':
     params= Parameters()
-    params.geometry_type = "Rectangle_beam"
+    params.geometry_type = "Mid_cantilever"
     geom= Rectangle_beam(params)
     geom.geom_automatic()
-    # gmsh.fltk.run()
+    gmsh.fltk.run()
     assert(isinstance(geom, Mid_cantilever))
