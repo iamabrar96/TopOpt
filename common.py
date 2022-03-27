@@ -9,13 +9,16 @@ class GMSH_helper():
         self.params= params
 
     def getDofsForNodeTags(self, tags):
-        groupdof= (tags-1)*self.params.n_dim                                         
-        groupdof=np.vstack([groupdof+i for i in range(self.params.n_dim)])
-        return groupdof
+        assert isinstance(tags, list)
+        nodeDof= []
+        for tag in tags:
+            temp= (tag-1)*self.params.n_dim                                         
+            nodeDof.append(np.vstack([temp+i for i in range(self.params.n_dim)]).T)
+        return nodeDof
 
     def free_dof(self, fixeddof):
         'Elimination approach'
-
+        fixeddof= np.array(fixeddof)
         dof=np.arange(0,self.params.tdof)
         freedof= np.setdiff1d(dof, fixeddof.reshape(-1))   
         return freedof
@@ -67,9 +70,6 @@ class GMSH_helper():
         _, determinants, _=gmsh.model.mesh.getJacobians(elementType=self.element_type,localCoord= integration_points,tag = -1, task = 0, numTasks = 1)
         return determinants
     
-    def get_entities_for_physical_group(self):
-        physical_group=gmsh.model.getPhysicalGroups()
-    
     def finalize(self):
         gmsh.finalize()
     
@@ -84,7 +84,10 @@ class Topology_viz:
         filter= densities>self.params.density_cutoff
         self.step+=1
         ele_tag, _= gmsh.model.mesh.getElementsByType(5)
-        
+
+        if len(filter)==0:
+            raise Exception("There are zero elements that satisfy the density cutoff. Please reduce the cutoff")
+
         gmsh.view.addModelData(
                 self.t,
                 self.step,

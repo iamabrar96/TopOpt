@@ -3,56 +3,132 @@ import numpy as np
 
 @dataclass
 class Parameters:
-    ''' number of nodes per element'''
-    node_per_ele=8
-    '''  degrees of freedom  per node'''
-    dof_per_node=3
-    ''' degrees of freedom per element '''
-    dof_per_ele= node_per_ele*dof_per_node
-    ''' number of dimension of the problem'''
+    """
+    Parameters necessary for running the simulation.
+    Attributes
+    ----------
+
+
+
+    n_dim : int
+        number of dimension of the problem
+        Default: 3
+    n_out : int
+        number of dimension of the output: density function
+        Default: 1
+    nu : float
+        poison ratio
+        Default : 0.3
+    
+    nelx: int
+        number of element in x direction
+    nely : int
+        number of element in y direction
+    nelz : int
+        number of element in z direction
+    
+    volfrac : float                     
+        Volume Fraction Limit   
+        Default : 0.3 
+
+    p : int 
+        Penalisation power for SIMP interpolaion     
+         
+    rmin : float
+        Minimum size of the selected domain 
+        Default : 1.5
+
+    E0 : np.array   
+        Youngs modulus of solid material                              
+        
+    Emin : float                        
+        Youngs modulus of void material 
+        Default : 1e-9 
+
+  
+    max_loop : int
+        maximum nuber of iterations 
+
+    tol =0.001
+        termination criteria 
+
+    force : np.array
+        Force Boundary condition  
+        Default : np.array([0, -1, 0])
+    
+    num_load : int                  
+        Specify which load_case. 1 if single load, n if n multiple loads   
+    
+    integration_type : String
+        Select the Gauss quadrature used for integration
+        Default : 'CompositeGauss4'
+
+    geometry_type : String
+        Select the Geometry for simulation. Currently supported geometries are  
+            - Rectangle_beam (default)
+            - Michell_beam 
+            - Mid_cantilever 
+            - multiple_load_case  
+    
+    density_cutoff : float
+        Minimum density value for elements to be considered in the final topology
+        Default : 0.5 
+
+    filter : int 
+        Select filter types. Currently supported filter types are
+            - 1 : density filter (default)
+            - 2 : sensitivity filter
+            - 3 : grey scale filter
+
+    node_per_ele : int 
+        number of nodes per element
+        Default : 8
+    
+    dof_per_node : int
+        degrees of freedom  per node
+        Default: 3
+
+    dof_per_ele : int
+        degrees of freedom per element
+
+    num_elems : int  
+        Total number of elements 
+    tnodes : int
+        Total number of nodes      
+    tdof : int
+        Total number of degrees of freedom
+    """
+
     n_dim=3
-    ''' number of dimension of the output: density function'''
     out_dim=1
-    ''' poison ratio '''
     nu=0.3
-    ''' number of element in x direction'''
-    nelx=4
-    ''' number of element in y direction'''
-    nely=1
-    ''' number of element in z direction '''
-    nelz=2
-    ''' volume fraction limit '''
+
+    nelx=30
+    nely=10
+    nelz=4
+
     volfrac=0.3                      
-    ''' penalisation power for SIMP interpolaion ''' 
     p=3           
-    ''' minimum size of the selected domain '''                    
-    rmin=1.5
-    '''  youngs modulus of solid material'''                           
     E0=1   
-    '''  youngs modulus of void material '''                          
     Emin=1e-9                         
-    '''Total number of elements'''
-    num_elems=nelx*nely*nelz  
-    ''' Total number of nodes'''   
-    tnodes=(nelx+1)*(nely+1)*(nelz+1)
-    ''' Total number of degrees of freedom'''
-    tdof=dof_per_node*tnodes
-    ''' maximum nuber of iterations'''
-    max_loop=200
-    ''' termination criteria'''
-    tol =0.01
-    '''Force magnitude'''
-    #force = np.array([0, -1, 0])
-    force1 = np.array([0, list([-1,1]), 0],dtype=object) # for two loads in opposite y direction 
-    '''Integration type'''
+    rmin=1.5
+
+    max_loop=60
+    tol =0.001
+
+    geometry_type= "multiple_load_case"
+    # force = np.array([[0, -1, 0]])
+    force = np.array([[0, -1, 0],[0, 1, 0]]) #for multiple_load_case
+    num_load= len(force)            
+    
     integration_type="CompositeGauss4"
-
-    geometry_type= "multiple__load_case"
-
-    density_cutoff= 0.5
-    '''multiple load_case'''
-    mul_load=0                   # 0 default single load, 2 multiload case
-    ''' filter types'''
-    filter=1            # 1 default density filter , 2 for sensitivity filter
-    grey_filter=1   # 1 defualt topology optimization case , 2 for grey scale filter
     density_cutoff= 0.4
+    filter=2 
+    
+    node_per_ele=8
+    dof_per_node=3
+    dof_per_ele= node_per_ele*dof_per_node  
+    
+    num_elems=nelx*nely*nelz  
+    tnodes=(nelx+1)*(nely+1)*(nelz+1)
+    tdof=dof_per_node*tnodes      

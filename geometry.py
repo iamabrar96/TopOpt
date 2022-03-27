@@ -1,4 +1,3 @@
-from xml.etree.ElementInclude import include
 import gmsh
 import numpy as np
 from parameters import Parameters
@@ -10,8 +9,8 @@ class Rectangle_beam:
             geom = super(Rectangle_beam, Rectangle_beam).__new__(Rectangle_beam)
         elif params.geometry_type == "Michell_beam":
             geom = super(Rectangle_beam, Michell_beam).__new__(Michell_beam)
-        elif params.geometry_type == "multiple__load_case":
-            geom = super(Rectangle_beam, multiple__load_case).__new__(multiple__load_case)
+        elif params.geometry_type == "multiple_load_case":
+            geom = super(Rectangle_beam, multiple_load_case).__new__(multiple_load_case)
         elif params.geometry_type == "Mid_cantilever":
             geom = super(Rectangle_beam, Mid_cantilever).__new__(Mid_cantilever)
         else:
@@ -63,38 +62,34 @@ class Rectangle_beam:
         '''
 
         return gmsh.model.mesh.getNodes(*dimTag, includeBoundary=True,returnParametricCoord=True)
-    
-    
-    
 
     def add_forcebc(self):
         '''
-        It defines the nodal points where load  is applied
-        load applied on the right end of the beam
+        It defines nodal points where load  is applied. Creates one array containing 
+        node tags per load and stores them in a list.
+        In this 'Rectangle_beam' case load is applied on the right end of the beam. 
         '''
 
-        self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(1, 5, includeBoundary=True)[0])
-     
+        self.forceNodeTags= [np.sort(gmsh.model.mesh.getNodes(1, 5, includeBoundary=True)[0].astype('int'))]
    
     def add_fixedbc(self):
         '''
-        It defines the nodal points where there is no displacement .i.e. the boundary condition are fixed .
-        nodes on the left surface of the beam are fixed
+        It defines the nodal points on fixed boundary. Creates one array containing 
+        node tags per boudary and stores them in a list.
+        In this 'Rectangle_beam' case nodes on the left surface of the beam are fixed.
         '''
 
-        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
+        self.fixedNodeTags= [np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0].astype('int'))]
 
     
     def add_center(self):
-        self.centerNodeTags= gmsh.model.mesh.getNodes(1, 9, includeBoundary=True)[0]
+        self.centerNodeTags= gmsh.model.mesh.getNodes(1, 9, includeBoundary=True)[0].astype('int')
 
-        #boundary nodes come in fornt like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
+        #boundary nodes come in front like so [bn1, bn2, ..in_n..] so transform it such that [bn1, ..in_n.., bn2]
         self.centerNodeTags[-1], self.centerNodeTags[-2]= self.centerNodeTags[-2], self.centerNodeTags[-1]
-        self.centerNodeTags[:]= np.roll(self.centerNodeTags[:],1) 
+        self.centerNodeTags= [np.roll(self.centerNodeTags[:],1) ]
 
-    def geom_automatic(self):
-        #give this sucker a good name
-
+    def geom_automatic(self): 
         self.create_geometry()
         self.create_mesh()
         self.add_forcebc()
@@ -108,55 +103,58 @@ different types of boundary conditions
 '''
 class Michell_beam(Rectangle_beam):
     def add_forcebc(self):
-        # point load applied at the midpoint of the top surface of the beam
-        self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(2, 4, includeBoundary=False)[0])
-        self.forceNodeTags= self.forceNodeTags[int((self.params.nelx/2)-1)]
-        self.forceNodeTags=self.forceNodeTags.astype(int)
+        """
+        In this case point load is applied at the midpoint of the top surface of the beam
+        """
+        self.forceNodeTags= np.sort(gmsh.model.mesh.getNodes(2, 4, includeBoundary=False)[0].astype('int'))
+        self.forceNodeTags= [self.forceNodeTags[int((self.params.nelx/2)-1)]]
 
     def add_fixedbc(self):
-        # fixed  boundary nodes of the bottom surface
-        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,3, includeBoundary=True)[0])
-        self.fixedNodeTags=self.fixedNodeTags[:4]       
-        print(self.fixedNodeTags)
+        """
+        In this case fixed  boundary is on the bottom surface
+        """
+        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,3, includeBoundary=True)[0].astype('int'))
+        self.fixedNodeTags=[self.fixedNodeTags[:4]]     
 class Mid_cantilever(Rectangle_beam):
     def add_forcebc(self):
-        # load applied on the mid point of the right end of the beam
-        self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
-        print(self.forceNodeTags)
-        # when nelz is even
-        self.forceNodeTags= self.forceNodeTags[int((self.params.nelz/2)-1)] 
-        # when nelz is odd
-        #self.forceNodeTags= self.forceNodeTags[int(self.params.nelz/2)]
-        self.forceNodeTags=self.forceNodeTags.astype(int)
-        print(self.forceNodeTags)
-    def add_fixedbc(self):
-        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
+        """
+        In this case load applied on the mid point of the right end of the beam
+        """
+        self.forceNodeTags= gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0].astype('int')
 
-class multiple__load_case(Rectangle_beam):
+        if self.params.nelz%2 == 0: #case: nelz is even
+            self.forceNodeTags= [ self.forceNodeTags[int((self.params.nelz/2)-1)] ]
+        else:                       #case: nelz is odd
+            self.forceNodeTags= [ self.forceNodeTags[int(self.params.nelz/2)] ]
+
+    def add_fixedbc(self):
+        """
+        In this case nodes on the left surface of the beam are fixed.
+        """
+        self.fixedNodeTags= [np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0].astype('int'))]
+
+class multiple_load_case(Rectangle_beam):
     def add_forcebc(self):
-        # mid point load applied opposite to each other in two different direction(up, down)
-        # when nelz is even
-        self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
-        self.forceNodeTags=np.atleast_1d(self.forceNodeTags[int((self.params.nelz/2)-1)])
-        self.forceNodeTags2= (gmsh.model.mesh.getNodes(1, 7, includeBoundary=False)[0])
-        self.forceNodeTags1=np.atleast_1d(self.forceNodeTags2[int((self.params.nelz/2)-1)])
-        self.forceNodeTags=np.concatenate((self.forceNodeTags,self.forceNodeTags1))
-        print(self.forceNodeTags)
-        # when nelz is odd
-        # self.forceNodeTags= (gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0])
-        # self.forceNodeTags=np.atleast_1d(self.forceNodeTags[int((self.params.nelz/2))])
-        # self.forceNodeTags2= (gmsh.model.mesh.getNodes(1, 7, includeBoundary=False)[0])
-        # self.forceNodeTags1=np.atleast_1d(self.forceNodeTags2[int((self.params.nelz/2))])
-        # self.forceNodeTags=np.concatenate((self.forceNodeTags,self.forceNodeTags1))
+        """
+        In this case mid point load applied opposite to each other in two different direction(up, down)
+        """
+        forceNodeTags1= gmsh.model.mesh.getNodes(1, 5, includeBoundary=False)[0].astype('int')
+        forceNodeTags1= forceNodeTags1[int(self.params.nelz/2 -self.params.nelz%2)]
+        forceNodeTags2= gmsh.model.mesh.getNodes(1, 7, includeBoundary=False)[0].astype('int')
+        forceNodeTags2= forceNodeTags2[int(self.params.nelz/2 -self.params.nelz%2)]
+
+        self.forceNodeTags= [forceNodeTags1, forceNodeTags2]
+        
     def add_fixed(self):
-        #  nodes on the left surface of the beam are fixed
-        self.fixedNodeTags= np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0])
+        """
+        In this case nodes on the left surface of the beam are fixed
+        """
+        self.fixedNodeTags= [np.sort(gmsh.model.mesh.getNodes(2,1, includeBoundary=True)[0].astype('int'))]
 
 if __name__ == '__main__':
     params= Parameters()
     params.geometry_type = "Rectangle_beam"
     geom= Rectangle_beam(params)
-    geom.create_geometry()
-    geom.create_mesh()
-    gmsh.fltk.run()
+    geom.geom_automatic()
+    # gmsh.fltk.run()
     assert(isinstance(geom, Mid_cantilever))

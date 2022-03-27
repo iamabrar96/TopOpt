@@ -12,6 +12,7 @@ class SimpOptimizer:
         self.params = params
         self.solver= FE_solver(params)
         self.topology_visualizer= Topology_viz(params)
+
         ################################# Initialisations ################################
         self.density_filter2()
 
@@ -22,14 +23,8 @@ class SimpOptimizer:
         difference=1
 
 
-        E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
         
         for loop in tqdm(range(self.params.max_loop)):
-            # update global stiffness using x.globalstiffness()
-            # solve for nodal disp using x.nodaldisp()
-            # complicance
-            # flter
-            # Update densities
 
             if not difference>self.params.tol:
                 break 
@@ -37,13 +32,17 @@ class SimpOptimizer:
             
             ''''minimum compliance objective function and sensitivity analysis'''
             
-            U, Jelem= self.solver.solve(phy_dens) 
-            d_Jelem= -p*(E0-Emin)*phy_dens**(p-1)* Jelem
+            _, Jelem, d_Jelem= self.solver.solve(phy_dens) 
             d_vol=np.ones(self.params.num_elems)
-            ''' use of filtering function to improve the sensitivity analysis  '''
+        
+            if self.params.filter==1:   #case: density filter
+                d_Jelem= self.H.dot(d_Jelem/self.HS)
+                d_vol= self.H.dot(d_vol/self.HS)
             
-            d_Jelem= self.H.dot(d_Jelem/self.HS)
-            d_vol= self.H.dot(d_vol/self.HS)
+            elif self.params.filter==2: #case: sensitivity filter
+                d_Jelem= np.dot(self.H ,old_dens*d_Jelem)/(self.HS*np.maximum(1e-3, old_dens))
+                
+           
             ''' Optimality criteria update scheme'''
             ##### implementing the bisection algorithm to predict the lambda value ######
             l1=0 
@@ -55,7 +54,13 @@ class SimpOptimizer:
             while (l2-l1)/(l1+l2)>1e-3:
                 lmid=0.5*(l2+l1)
                 new_dens= np.maximum(0.0,np.maximum(dens_backward, np.minimum(1.0,np.minimum(dens_forward, old_dens*sqrt_d_Jelem/np.sqrt(lmid)))))
-                phy_dens= self.H.dot(new_dens/self.HS)
+                
+                if self.params.filter==1:
+                    phy_dens= self.H.dot(new_dens/self.HS)
+                
+                elif self.params.filter==2:
+                    phy_dens=new_dens     
+                            
                 if np.sum(phy_dens)>self.params.volfrac*self.params.num_elems:
                     l1=lmid
                 else :
@@ -64,9 +69,11 @@ class SimpOptimizer:
 
             difference=np.max(abs(new_dens-old_dens))
             old_dens=new_dens
+        print(Jelem)
         return phy_dens
     
     def density_filter2(self):
+        # ToDo add comment here
         ele_tags, _= gmsh.model.mesh.getElementsByType(5)
         centroids = gmsh.model.mesh.getBarycenters(5, -1, False, True).reshape(-1,3)
         self.H= np.zeros((self.params.num_elems, self.params.num_elems))

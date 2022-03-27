@@ -4,12 +4,14 @@ import numpy as np
 from common import GMSH_helper
 from parameters import Parameters
 from geometry import Rectangle_beam
-import gmsh # todo remove this later
-from scipy.linalg import  cho_factor, LinAlgError
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
+from scipy.linalg import  cho_factor, LinAlgError
 class FE_solver:
+    ''' Finite Element Solver class '''
+
     def __init__(self, params:Parameters) -> None:
+
         self.params= params
         self.geometry= Rectangle_beam(params)
         self.geometry.geom_automatic()
@@ -19,9 +21,6 @@ class FE_solver:
 
         ################################# Initialisations ################################
         self.integration_points, self.weights= self.helper.gauss_points()
-
-        # self.weights/=2
-        #For now no need for shape functions so omitted here
         _, self.shapefunc_dertv= self.helper.basis_function(self.integration_points)
         self.shapefunc_dertv= self.shapefunc_dertv.reshape(len(self.weights), -1)
 
@@ -82,10 +81,10 @@ class FE_solver:
     
     def init_densities(self):
         '''
-        initialisation of design and physical variables (densities)
+        Initialisation of physical densities
         '''
-
-        self.phy_dens= np.ones(self.params.num_elems)*self.params.volfrac   # physical densities are assigned a constant and unifrom values(initially)
+        # physical densities are assigned a constant and unifrom values(initially)
+        self.phy_dens= np.ones(self.params.num_elems)*self.params.volfrac   
 
     def simp_formula(self):
         '''
@@ -100,7 +99,7 @@ class FE_solver:
 
     def element_stiffness_matrix(self):
         '''
-        obtaining individual element stiffeness matrices from Bmat and consitutive matrix functions
+        Obtain individual element stiffeness matrices from Bmat and consitutive matrix functions
         '''
         k_ref= []
         for i in range(len(self.B_mat)):
@@ -112,7 +111,7 @@ class FE_solver:
 
     def globalstiffness_matrix(self):
         '''
-        forming of global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
+        Form global stiffness matrix by assembling all the element matrices which is obtained from the element_stiffness_matrix function
         '''
         msimp= self.simp_formula()
         ke2= self.ke.reshape(self.params.num_elems, -1)
@@ -124,64 +123,57 @@ class FE_solver:
         self.kg = coo_matrix((vK, (iK, jK)), shape= (self.params.tdof, self.params.tdof)).tocsc()
 
     def nodal_forces(self):
-        '''
-        defining the nodal forces and nodal displacements
-        '''
-        self.F=np.zeros(self.params.tdof)
-        
-        # # Todo check for multiple entities in a physical group
-        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags).T
-        self.F[forcedof]= self.params.force
-        # in case of multi load (i.e. two loads in opposite direction with each other)
-        # self.F=np.zeros((self.params.tdof,2))
-        # self.F[forcedof[0]][0]= self.params.force1[1][0]
-        # self.F[forcedof[1]][1]= self.params.force1[1][1]
-        # print(forcedof)
-        # print(self.F[25:35])
+
+        self.F=np.zeros((self.params.tdof, self.params.num_load))
+
+        forcedof= self.helper.getDofsForNodeTags(self.geometry.forceNodeTags)
+        for i in range(self.params.num_load):
+            self.F[forcedof[i], i]= self.params.force[i]
+
     def nodal_displacements(self):
+        '''Solving for nodal displacements at free dofs'''
+
         fixeddof= self.helper.getDofsForNodeTags(self.geometry.fixedNodeTags)
         freedof= self.helper.free_dof(fixeddof) 
-        #solving for nodal displacements at free dofs
-        x,y=np.meshgrid(freedof,freedof)
-        self.U=np.zeros(self.params.tdof)
 
-        self.U[freedof]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof])
-        # in case of multi load (i.e. two loads in opposite direction with each other)
-        # x,y=np.meshgrid(freedof,freedof)
-        # self.U=np.zeros((self.params.tdof,2))
-
-        # self.U[freedof]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof])
+        self.U=np.zeros((self.params.tdof, self.params.num_load))
+        for i in range(self.params.num_load):
+            self.U[freedof, i]= spsolve(self.kg[freedof,:][:,freedof], self.F[freedof, i])
 
     def plot_disp(self):
-        center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[1]
+        center= self.helper.getDofsForNodeTags(self.geometry.centerNodeTags)[0][:,1]
         nodes_c= np.arange(0,self.params.nelx+1)
-        fig,ax=plt.subplots()
-        plt.plot(nodes_c, self.U[center])
-        plt.title("nodes along x coordinates vs displacement along y direction")
-        plt.xlabel("x coordinates")
-        plt.ylabel("U_y ")
-        ax.yaxis.tick_right()
+        fig,ax=plt.subplots(figsize = (8,6))
+
+        for i in range(self.params.num_load):
+            ax.plot(nodes_c, self.U[center, i], marker = '*', color = 'blue')
+
+        ax.set_title("Nodes along x-axis vs Displacement along y-axis",size = 14)
+        ax.set_xlabel("x coordinates",size = 12)
+        ax.set_ylabel("U_y",size = 12)
+        # fig.savefig("Rectangle_beam")  
         plt.show()
+
         
     def elemental_compliance(self):
-        self.Jelem= []
+        """
+        Compute element compliance and its derivative
+        """
+
+        self.Jelem= np.zeros(self.params.num_elems)
         for i in range(self.params.num_elems):
-            self.Jelem.append(np.dot(np.dot(self.U[self.element_dofs[i]], self.ke[i]), self.U[self.element_dofs[i]]))
-        self.Jelem= np.array(self.Jelem)    
-
-        # in case of multi load (i.e. two loads in opposite direction with each other)
-        # The objective function is now the sum of different load cases (in this case 2 different loads)
-        # self.Jelem= []
-        # for i in range(self.F.shape[1]):
-        #     self.Ue=self.U[:,i] 
-        #     for i in range(self.params.num_elems):
-        #         self.Jelem.append(np.dot(np.dot(self.Ue[self.element_dofs[i]], self.ke[i]), self.Ue[self.element_dofs[i]]))
-        #     self.Jelem= np.array(self.Jelem)  
-
+            for j in range(self.params.num_load):   
+                # this order of loops is chosen so that compiler can do optimizations for simd
+                self.Jelem[i]+= np.dot(np.dot(self.U[self.element_dofs[i], j], self.ke[i]), self.U[self.element_dofs[i], j])
+        
+        E0, Emin, p= self.params.E0, self.params.Emin, self.params.p     #just using these as local variables
+        self.d_Jelem= np.zeros(self.params.num_elems)
+        for i in range(self.params.num_load):    
+            self.d_Jelem-= p*(E0-Emin)*self.phy_dens**(p-1)* self.Jelem
 
         #for some reasons not known this vectorized implementation is slower than the iterative one
-        # self.Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
-        # self.Jelem= (self.Jelem * self.U[self.element_dofs]).sum(axis=1)
+        # Jelem= np.matmul(self.ke, self.U[self.element_dofs][:,:,np.newaxis]).squeeze(-1)
+        # Jelem= (Jelem * self.U[self.element_dofs]).sum(axis=1)
 
     def prepare_system_of_equations(self):
         self.Bmat()
@@ -189,19 +181,20 @@ class FE_solver:
         self.element_stiffness_matrix()
         self.nodal_forces()
 
-    def solve(self, new_density):
+    def solve(self, new_density= None):
         '''
         solve for nodal displacements and element compliance for given elemental densities 
         returns 
             nodal_displacements 
-            element compliances
+            element compliance and its derivatives
         '''
+        if new_density is not None:
+            self.phy_dens= new_density
 
-        self.phy_dens= new_density
         self.globalstiffness_matrix()
         self.nodal_displacements()
         self.elemental_compliance()
-        return self.U ,self.Jelem
+        return self.U, self.Jelem, self.d_Jelem
 
 
 if __name__ == '__main__':
